@@ -30,7 +30,7 @@ import {
   vocabCandidates,
   type CorpusLang,
 } from "./db.js";
-import { concordance, type SortMode, type MatchMode } from "./tokens.js";
+import { concordance, posSearch, type SortMode, type MatchMode } from "./tokens.js";
 
 type Vars = { db: D1Database };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -142,6 +142,28 @@ app.get("/v1/concordance", async (c) => {
     dialect: c.req.query("dialect") ?? null,
     author: c.req.query("author") ?? null,
   });
+  return ok(c, lines);
+});
+
+// ───────────────────────────── /v1/pos (POS-search) ───────────────────────────── //
+// Match node tokens by upos/lemma/surface, optionally constrained by the next
+// token (next_upos / next_surface) via a self-join. e.g. VERB + =an:
+//   /v1/pos?upos=VERB&next_surface==an
+app.get("/v1/pos", async (c) => {
+  const lines = await posSearch(c.get("db"), {
+    upos: c.req.query("upos") ?? null,
+    lemma: c.req.query("lemma") ?? null,
+    surface: c.req.query("surface") ?? null,
+    nextUpos: c.req.query("next_upos") ?? null,
+    nextSurface: c.req.query("next_surface") ?? null,
+    window: intParam(c.req.query("window"), 40),
+    limit: intParam(c.req.query("limit"), 50),
+    dialect: c.req.query("dialect") ?? null,
+    author: c.req.query("author") ?? null,
+  });
+  if (!lines.length && !c.req.query("upos") && !c.req.query("lemma") && !c.req.query("surface") && !c.req.query("next_upos") && !c.req.query("next_surface")) {
+    return fail(c, 400, "missing_filter", "provide at least one of: upos, lemma, surface, next_upos, next_surface");
+  }
   return ok(c, lines);
 });
 

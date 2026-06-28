@@ -51,12 +51,34 @@ normalization should normalize client-side or via the MCP.
 membership; that subtraction **stays in the MCP** (the corpus API holds no Sheets
 credentials by design).
 
-## Planned (later phases)
+## Token layer — KWIC + POS (Phases 1–3)
 
-| Route | Phase | Notes |
+Backed by `sentences` + `corpus_tokens` (migrations/0001_tokens.sql): 196,184
+sentences → 1,679,732 tokens, tokenized with the ainu-morpheme-tagger spaCy
+`ain` tokenizer (so clitics `ku=`/`a=`/`=an` are their own tokens) with char
+offsets. 1.26M tokens are POS-tagged (`combined_enriched/model-best`, UD UPOS),
+**Latin-script only** (the model is Roman-trained); non-Latin rows keep
+surface/offset but NULL POS. POS is **machine-tagged, not gold** (`model_version`
+recorded per token).
+
+| Method · Route | Params | Returns |
 |---|---|---|
-| `GET /v1/concordance` | 2 | KWIC over a materialized `corpus_tokens` table (char offsets), ports the Python `Concordancer` |
-| `GET /v1/pos` | 3 | POS-search incl. adjacency (token self-joins on `idx+1`); annotations carry `model_version` + `confidence`; script-aware |
+| `GET /v1/concordance` | `q` (required), `window` (40), `limit` (50), `sort=none\|left\|right`, `match=exact\|prefix`, `dialect`, `author` | KWIC `{sentence_id,left,node,right,translation,dialect,author,uri}[]` |
+| `GET /v1/pos` | at least one of `upos`,`lemma`,`surface`,`next_upos`,`next_surface`; plus `window`,`limit`,`dialect`,`author` | KWIC lines + `{upos,lemma}`. Adjacency via `next_*` (self-join on `idx+1`) — e.g. `?upos=VERB&next_surface==an` |
+
+Rebuild the token layer:
+```sh
+# 1. tokenize (light, no torch):
+PYTHONPATH=../ainu-morpheme-tagger uv run --python 3.12 --with "spacy>=3.8.4" --with "numpy<2" --with click --no-project \
+  scripts/build_tokens.py --data ../ainu-corpora/data.jsonl --out build
+# 2. POS-tag (CNN, CPU) — run from the tagger repo so lookups/ resolve:
+#    (cd ../ainu-morpheme-tagger && PYTHONPATH=. .venv/bin/python ../ainu-corpora-api/scripts/tag_pos.py \
+#       --data ../ainu-corpora/data.jsonl --model training/combined_enriched/model-best \
+#       --out ../ainu-corpora-api/build --procs 6)
+# 3. load (local dry-run, then Turso):
+bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl          # local build/corpus.db + validation
+TURSO_DATABASE_URL=… TURSO_AUTH_TOKEN=… bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl --turso
+```
 
 ## Develop
 

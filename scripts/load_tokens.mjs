@@ -14,9 +14,11 @@
 import { readFileSync } from "node:fs";
 
 const TURSO = process.argv.includes("--turso");
+const tokArg = process.argv.find((a) => a.startsWith("--tokens="));
+const TOK_FILE = tokArg ? tokArg.slice("--tokens=".length) : "../build/tokens.jsonl";
 const MIG = new URL("../migrations/0001_tokens.sql", import.meta.url);
 const SENT = new URL("../build/sentences.jsonl", import.meta.url);
-const TOK = new URL("../build/tokens.jsonl", import.meta.url);
+const TOK = new URL(TOK_FILE, import.meta.url);
 
 function* ddlStatements(sql) {
   for (const raw of sql.split(";")) {
@@ -34,9 +36,12 @@ function chunk(arr, n) {
 }
 
 const SENT_COLS = ["id", "row_order", "text", "translation", "dialect", "author", "collection", "document", "uri"];
-const TOK_COLS = ["sentence_id", "idx", "surface", "surface_norm", "char_start", "char_end", "script", "is_clitic"];
+const TOK_COLS = ["sentence_id", "idx", "surface", "surface_norm", "char_start", "char_end", "script", "is_clitic",
+  "lemma", "upos", "xpos", "feats_json", "model_version"];
 const sentRow = (r) => [r.id, r.o, r.text, r.tr ?? null, r.dia ?? null, r.au ?? null, r.col ?? null, r.doc ?? null, r.uri ?? null];
-const tokRow = (r) => [r.s, r.i, r.surf, r.norm, r.a, r.b, r.sc, r.cl];
+// POS keys (lem/up/xp/ft/mv) are present in the Phase-3 tokens_pos.jsonl, null otherwise.
+const tokRow = (r) => [r.s, r.i, r.surf, r.norm, r.a, r.b, r.sc, r.cl,
+  r.lem ?? null, r.up ?? null, r.xp ?? null, r.ft ?? null, r.mv ?? null];
 
 async function loadTurso() {
   const { createClient } = await import("@libsql/client");
