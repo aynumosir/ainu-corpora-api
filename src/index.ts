@@ -30,6 +30,7 @@ import {
   vocabCandidates,
   type CorpusLang,
 } from "./db.js";
+import { concordance, type SortMode, type MatchMode } from "./tokens.js";
 
 type Vars = { db: D1Database };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -123,6 +124,26 @@ app.get("/v1/stopword", async (c) => {
 app.get("/v1/candidates", async (c) =>
   ok(c, await vocabCandidates(c.get("db"), intParam(c.req.query("minCount"), 1))),
 );
+
+// ───────────────────────────── /v1/concordance (KWIC) ───────────────────────────── //
+// Keyword-in-context over corpus_tokens. Node matches surface_norm (exact|prefix);
+// left/node/right are sliced from the source sentence by char offset.
+app.get("/v1/concordance", async (c) => {
+  const q = c.req.query("q") ?? "";
+  if (!q.trim()) return fail(c, 400, "missing_query", "q is required");
+  const sortRaw = c.req.query("sort") ?? "none";
+  const matchRaw = c.req.query("match") ?? "exact";
+  const lines = await concordance(c.get("db"), {
+    q,
+    window: intParam(c.req.query("window"), 40),
+    limit: intParam(c.req.query("limit"), 50),
+    sort: (["none", "left", "right"].includes(sortRaw) ? sortRaw : "none") as SortMode,
+    match: (matchRaw === "prefix" ? "prefix" : "exact") as MatchMode,
+    dialect: c.req.query("dialect") ?? null,
+    author: c.req.query("author") ?? null,
+  });
+  return ok(c, lines);
+});
 
 app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.path}`));
 app.onError((err, c) => {
