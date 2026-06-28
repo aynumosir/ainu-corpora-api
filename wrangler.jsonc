@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ainu-corpora-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+
+  // Custom domain — aynu.org is on this Cloudflare account, so wrangler creates
+  // the DNS record + cert for corpus.aynu.org on deploy. This is the public,
+  // versioned corpus API (/v1/*) consumed by the MCP (via the CORPUS service
+  // binding), kampisos, and other frontends.
+  "routes": [
+    {
+      "pattern": "corpus.aynu.org",
+      "custom_domain": true
+    }
+  ],
+
+  // The corpus reference store lives in Turso (libSQL), same account as the
+  // ainu-mcp store. env.DB is a libSQL-backed shim (src/libsql.ts) created in
+  // index.ts from the DATABASE_URL / DATABASE_AUTH_TOKEN secrets:
+  //   wrangler secret put DATABASE_URL
+  //   wrangler secret put DATABASE_AUTH_TOKEN
+  // Phase 0 points at the EXISTING ainu-mcp Turso DB (read-only use) so the
+  // extraction is behaviour-identical; a dedicated corpus DB can be split later.
+  "vars": {
+    "API_VERSION": "1"
+  }
+}
