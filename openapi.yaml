@@ -1,0 +1,137 @@
+openapi: 3.1.0
+info:
+  title: ainu-corpora-api
+  version: "1"
+  description: >
+    Corpus search / KWIC concordance / POS-search API for ainu-corpora.
+    Every response is an envelope: { api_version, data } on success,
+    { api_version, error: { code, message } } on failure. Routes are under /v1;
+    breaking changes bump to /v2. CORS is open (GET only).
+servers:
+  - url: https://corpus.aynu.org
+components:
+  schemas:
+    Envelope:
+      type: object
+      required: [api_version]
+      properties:
+        api_version: { type: string, example: "1" }
+        data: {}
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+    CorpusRow:
+      type: object
+      properties:
+        id: { type: string }
+        text: { type: string }
+        translation: { type: string, nullable: true }
+        dialect: { type: string, nullable: true }
+        author: { type: string, nullable: true }
+        collection: { type: string, nullable: true }
+        document: { type: string, nullable: true }
+        uri: { type: string, nullable: true }
+    KwicLine:
+      type: object
+      properties:
+        sentence_id: { type: string }
+        left: { type: string }
+        node: { type: string }
+        right: { type: string }
+        translation: { type: string, nullable: true }
+        dialect: { type: string, nullable: true }
+        author: { type: string, nullable: true }
+        uri: { type: string, nullable: true }
+    PosLine:
+      allOf:
+        - $ref: "#/components/schemas/KwicLine"
+        - type: object
+          properties:
+            upos: { type: string, nullable: true }
+            lemma: { type: string, nullable: true }
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses: { "200": { description: ok } }
+  /v1/search:
+    get:
+      summary: Full-text corpus search (FTS5 trigram substring)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [ain, jpn, any], default: any } }
+        - { name: dialect, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        "200": { description: "CorpusRow[] in data" }
+  /v1/concordance:
+    get:
+      summary: KWIC concordance for a node word (left / node / right)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string }, description: node word (normalized) }
+        - { name: window, in: query, schema: { type: integer, default: 40 }, description: context chars each side }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: sort, in: query, schema: { type: string, enum: [none, left, right], default: none } }
+        - { name: match, in: query, schema: { type: string, enum: [exact, prefix], default: exact } }
+        - { name: dialect, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+      responses:
+        "200": { description: "KwicLine[] in data" }
+  /v1/pos:
+    get:
+      summary: POS / grammatical search (machine UD tags; Latin-script only)
+      description: >
+        Provide at least one of upos/lemma/surface/next_upos/next_surface.
+        next_* constrain the immediately following token (idx+1) — a self-join.
+        Example: ?upos=VERB&next_surface==an  → intransitive verbs taking =an.
+      parameters:
+        - { name: upos, in: query, schema: { type: string }, description: "UD UPOS e.g. NOUN, VERB, ADP, PART, ADV, DET, AUX, SCONJ, NUM, PRON, INTJ" }
+        - { name: lemma, in: query, schema: { type: string } }
+        - { name: surface, in: query, schema: { type: string } }
+        - { name: next_upos, in: query, schema: { type: string } }
+        - { name: next_surface, in: query, schema: { type: string } }
+        - { name: window, in: query, schema: { type: integer, default: 40 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: dialect, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+      responses:
+        "200": { description: "PosLine[] in data" }
+        "400": { description: "error: missing_filter" }
+  /v1/stats:
+    get:
+      summary: Corpus totals + top dialect distribution
+      responses: { "200": { description: "{ sentences, top_dialects } in data" } }
+  /v1/meta:
+    get:
+      summary: Generic precomputed meta value
+      parameters: [ { name: key, in: query, required: true, schema: { type: string } } ]
+      responses: { "200": { description: "string|null in data" } }
+  /v1/freq/word:
+    get:
+      summary: Frequency + rank for one already-normalized token
+      parameters: [ { name: token, in: query, required: true, schema: { type: string } } ]
+      responses: { "200": { description: "{ token, found, count, is_stopword, rank } in data" } }
+  /v1/freq/list:
+    get:
+      summary: Most-frequent tokens
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: includeStopwords, in: query, schema: { type: boolean, default: false } }
+        - { name: minCount, in: query, schema: { type: integer, default: 1 } }
+      responses: { "200": { description: "{ token, count, is_stopword }[] in data" } }
+  /v1/stopwords:
+    get: { summary: Canonical stopword list, responses: { "200": { description: "string[] in data" } } }
+  /v1/stopword:
+    get:
+      summary: Is one already-normalized token a stopword?
+      parameters: [ { name: token, in: query, required: true, schema: { type: string } } ]
+      responses: { "200": { description: "{ token, is_stopword } in data" } }
+  /v1/candidates:
+    get:
+      summary: Raw vocab-gap candidates (glossary subtraction stays in the MCP)
+      parameters: [ { name: minCount, in: query, schema: { type: integer, default: 1 } } ]
+      responses: { "200": { description: "candidate[] in data" } }
