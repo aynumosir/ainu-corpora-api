@@ -28,5 +28,11 @@
   // extraction is behaviour-identical; a dedicated corpus DB can be split later.
   "vars": {
     "API_VERSION": "1"
+  },
+
+  // Static UI (public/index.html) — a basic KWIC + POS concordancer served at /.
+  // Assets are matched first; /v1/*, /health, etc. fall through to the Worker.
+  "assets": {
+    "directory": "./public"
   }
 }

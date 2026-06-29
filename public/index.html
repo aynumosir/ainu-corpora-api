@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ainu-corpora — kampisos hunara | corpus search</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --panel: #ffffff; --ink: #1c1a17; --muted: #6b645a;
+    --line: #e7e2d8; --accent: #b4532a; --accent-soft: #f3e2d8;
+    --node-bg: #fde9b8; --node-ink: #5a3a00; --link: #9c4a23;
+    --mono: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+    --ui: system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16140f; --panel: #1f1c16; --ink: #ece7dd; --muted: #9a9285;
+      --line: #322d24; --accent: #e08a5b; --accent-soft: #2c211a;
+      --node-bg: #4a3a18; --node-ink: #ffe6a8; --link: #e6a072;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); line-height: 1.5; }
+  header { padding: 18px 22px 14px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; }
+  h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 22px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 0; }
+  .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .modes button { border: 0; background: var(--panel); color: var(--muted); padding: 8px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+  .modes button[aria-selected="true"] { background: var(--accent); color: #fff; }
+  input[type=text], select { font: inherit; font-size: 14px; padding: 8px 10px; background: var(--panel);
+    color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
+  input#q { flex: 1 1 240px; min-width: 200px; }
+  input.sm { width: 86px; } select.sm { padding: 8px; }
+  .opt { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  .opt[hidden] { display: none; }
+  button.go { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  .status { color: var(--muted); font-size: 13px; padding: 4px 0 12px; min-height: 20px; }
+  .hits { padding-bottom: 60px; }
+  .hit { border-bottom: 1px solid var(--line); padding: 9px 4px; }
+  .kwic { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline;
+    font-family: var(--mono); font-size: 14.5px; column-gap: 6px; }
+  .kwic .l { text-align: right; white-space: nowrap; overflow: hidden; color: var(--ink); }
+  .kwic .n { background: var(--node-bg); color: var(--node-ink); padding: 1px 5px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+  .kwic .r { text-align: left; white-space: nowrap; overflow: hidden; }
+  .badge { font-family: var(--ui); font-size: 11px; color: var(--accent); border: 1px solid var(--line);
+    background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; margin-left: 8px; }
+  .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 3px; padding-left: 2px; font-size: 12.5px; }
+  .meta .tr { color: var(--muted); }
+  .meta .src { color: var(--muted); margin-left: auto; }
+  .meta .src a { color: var(--link); text-decoration: none; }
+  .row-sent { font-family: var(--mono); font-size: 14.5px; }
+  .empty { color: var(--muted); padding: 30px 4px; }
+  footer { color: var(--muted); font-size: 12px; padding: 18px 0 40px; border-top: 1px solid var(--line); }
+  footer a { color: var(--link); }
+  code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 12px; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>aynu kampisos hunara <small>— ainu-corpora search · KWIC · POS</small></h1>
+</div></header>
+
+<div class="wrap">
+  <form id="f" autocomplete="off">
+    <div class="modes" role="tablist">
+      <button type="button" data-mode="kwic" aria-selected="true">KWIC</button>
+      <button type="button" data-mode="pos" aria-selected="false">POS</button>
+      <button type="button" data-mode="text" aria-selected="false">Text</button>
+    </div>
+    <input type="text" id="q" placeholder="rayke" >
+    <label class="opt" id="o-upos" hidden>UPOS
+      <select id="upos" class="sm">
+        <option value="">—</option>
+        <option>NOUN</option><option>VERB</option><option>ADP</option><option>PART</option>
+        <option>ADV</option><option>DET</option><option>AUX</option><option>SCONJ</option>
+        <option>NUM</option><option>PRON</option><option>INTJ</option><option>ADJ</option>
+      </select></label>
+    <label class="opt" id="o-next" hidden>next= <input type="text" id="next" class="sm" placeholder="=an"></label>
+    <label class="opt" id="o-match">match
+      <select id="match" class="sm"><option value="exact">exact</option><option value="prefix">prefix</option></select></label>
+    <label class="opt" id="o-sort">sort
+      <select id="sort" class="sm"><option value="none">none</option><option value="left">left</option><option value="right">right</option></select></label>
+    <label class="opt" id="o-lang" hidden>lang
+      <select id="lang" class="sm"><option value="any">any</option><option value="ain">ain</option><option value="jpn">jpn</option></select></label>
+    <label class="opt">dialect <input type="text" id="dialect" class="sm" placeholder="沙流"></label>
+    <label class="opt">limit <input type="text" id="limit" class="sm" value="40" style="width:56px"></label>
+    <button class="go" type="submit">Search</button>
+  </form>
+
+  <div class="status" id="status">Type a word and search — e.g. <code>rayke</code> (KWIC), or POS <code>upos=VERB next==an</code>.</div>
+  <div class="hits" id="hits"></div>
+
+  <footer>
+    Data: <a href="https://github.com/aynumosir/ainu-corpora" target="_blank">ainu-corpora</a> ·
+    API: <a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/openapi.yaml" target="_blank">/v1</a> (<a href="https://github.com/aynumosir/ainu-corpora-api" target="_blank">ainu-corpora-api</a>) ·
+    POS is machine-tagged (UD), Latin-script only.
+  </footer>
+</div>
+
+<script>
+const API = location.hostname === "corpus.aynu.org" ? "" : "https://corpus.aynu.org";
+let mode = "kwic";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => (s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll(".modes button").forEach((b) => b.setAttribute("aria-selected", b.dataset.mode === m));
+  $("#o-upos").hidden = m !== "pos";
+  $("#o-next").hidden = m !== "pos";
+  $("#o-match").hidden = m !== "kwic";
+  $("#o-sort").hidden = m !== "kwic";
+  $("#o-lang").hidden = m !== "text";
+  $("#q").placeholder = m === "pos" ? "surface (optional, e.g. arpa)" : m === "text" ? "search text or 日本語訳" : "rayke";
+}
+document.querySelectorAll(".modes button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+async function get(path) {
+  const r = await fetch(API + path);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.code + ": " + j.error.message);
+  return j.data;
+}
+function src(d) {
+  const label = [d.dialect, d.author].filter(Boolean).join(" · ");
+  return d.uri ? `<a href="${esc(d.uri)}" target="_blank">${esc(label || "source")}</a>` : esc(label);
+}
+function kwicRow(d, badge) {
+  return `<div class="hit"><div class="kwic">
+      <span class="l">${esc(d.left)}</span><span class="n">${esc(d.node)}</span><span class="r">${esc(d.right)}</span>
+    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge || ""}<span class="src">${src(d)}</span></div></div>`;
+}
+
+async function run() {
+  const q = $("#q").value.trim();
+  const limit = encodeURIComponent($("#limit").value || "40");
+  const dialect = $("#dialect").value.trim();
+  const dp = dialect ? `&dialect=${encodeURIComponent(dialect)}` : "";
+  $("#status").textContent = "Searching…";
+  $("#hits").innerHTML = "";
+  try {
+    let rows = [], render;
+    if (mode === "kwic") {
+      if (!q) return done("Enter a word.");
+      rows = await get(`/v1/concordance?q=${encodeURIComponent(q)}&limit=${limit}&sort=${$("#sort").value}&match=${$("#match").value}&window=34${dp}`);
+      render = (d) => kwicRow(d);
+    } else if (mode === "pos") {
+      const upos = $("#upos").value, next = $("#next").value.trim();
+      if (!q && !upos && !next) return done("Pick a UPOS, a surface, or a next= filter.");
+      const p = new URLSearchParams({ limit: $("#limit").value || "40", window: "34" });
+      if (upos) p.set("upos", upos);
+      if (q) p.set("surface", q);
+      if (next) p.set("next_surface", next);
+      if (dialect) p.set("dialect", dialect);
+      rows = await get(`/v1/pos?${p.toString()}`);
+      render = (d) => kwicRow(d, d.upos ? `<span class="badge">${esc(d.upos)}${d.lemma ? " · " + esc(d.lemma) : ""}</span>` : "");
+    } else {
+      if (!q) return done("Enter a query.");
+      rows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=${$("#lang").value}&limit=${limit}${dp}`);
+      render = (d) => `<div class="hit"><div class="row-sent">${esc(d.text)}</div>
+        <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`;
+    }
+    if (!rows.length) return done("No matches.");
+    $("#hits").innerHTML = rows.map(render).join("");
+    done(`${rows.length} result${rows.length === 1 ? "" : "s"}.`);
+  } catch (e) {
+    done("Error — " + e.message);
+  }
+}
+function done(msg) { $("#status").textContent = msg; }
+$("#f").addEventListener("submit", (e) => { e.preventDefault(); run(); });
+setMode("kwic");
+</script>
+</body>
+</html>
