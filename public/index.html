@@ -413,8 +413,38 @@ $("#t-gloss").addEventListener("click", () => {
   $("#t-gloss").textContent = document.body.classList.contains("gloss") ? "Hide POS/gloss" : "Show POS/gloss";
 });
 
+// ─── shareable URL state (form ⇄ querystring, back/forward) ───
+const URL_FIELDS = { q: "#q", match: "#match", sort: "#sort", expand: "#expand", clitic: "#clitic",
+  upos: "#upos", next: "#next", lemma: "#lemma", measure: "#measure", span: "#span",
+  window: "#window", lang: "#lang", dialect: "#dialect", limit: "#limit" };
+const URL_DEFAULTS = { q: "", match: "fold", sort: "none", expand: "none", clitic: "any",
+  upos: "", next: "", lemma: "", measure: "log_dice", span: "both", window: "5",
+  lang: "any", dialect: "", limit: "50" };
+let suppressUrl = false;
+
+function writeUrl() {
+  const p = new URLSearchParams();
+  if (mode !== "kwic") p.set("mode", mode);
+  for (const [k, sel] of Object.entries(URL_FIELDS)) {
+    const v = ($(sel)?.value ?? "").trim();
+    if (v && v !== URL_DEFAULTS[k]) p.set(k, v);
+  }
+  const url = p.toString() ? "?" + p.toString() : location.pathname;
+  if ((location.search || location.pathname) !== url) history.pushState(null, "", url);
+}
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  setMode(p.get("mode") || "kwic"); // toggles visible controls + examples
+  for (const [k, sel] of Object.entries(URL_FIELDS)) {
+    const el = $(sel); if (el) el.value = p.has(k) ? p.get(k) : URL_DEFAULTS[k];
+  }
+  return [...p.keys()].length > 0;
+}
+window.addEventListener("popstate", () => { suppressUrl = true; readUrl(); run().finally(() => { suppressUrl = false; }); });
+
 // ─── main run ───
 async function run() {
+  if (!suppressUrl) writeUrl();
   const q = $("#q").value.trim();
   const limit = encodeURIComponent($("#limit").value || "50");
   const dialect = $("#dialect").value.trim();
@@ -504,7 +534,10 @@ async function run() {
   }
 }
 $("#f").addEventListener("submit", (e) => { e.preventDefault(); run(); });
-setMode("kwic");
+
+// Restore from a shared/bookmarked URL, else default to KWIC.
+if (readUrl()) { suppressUrl = true; run().finally(() => { suppressUrl = false; }); }
+else setMode("kwic");
 </script>
 </body>
 </html>
