@@ -71,7 +71,8 @@ test("node upos + clitic + dialect constraints are appended", async () => {
   expect(calls[0].sql).toContain("t.upos = ?");
   expect(calls[0].sql).toContain("t.is_clitic = 0");
   expect(calls[0].sql).toContain("instr(s.dialect, ?) > 0");
-  expect(calls[0].args).toEqual(["arpa", "VERB", "沙流", 5]);
+  expect(calls[0].sql).toContain("LIMIT ? OFFSET ?");
+  expect(calls[0].args).toEqual(["arpa", "VERB", "沙流", 5, 0]); // …limit, offset
 });
 
 test("builds per-token left/node/right windows from sentence tokens", async () => {

@@ -31,7 +31,7 @@ import {
   type CorpusLang,
 } from "./db.js";
 import { concordance, posSearch, type SortMode, type MatchMode } from "./tokens.js";
-import { kwic, inflections, type NodeSort, type KwicMatch } from "./kwic.js";
+import { kwic, kwicTotal, inflections, type NodeSort, type KwicMatch } from "./kwic.js";
 import { collocations, structural, wordAnalytics } from "./analysis.js";
 import { dialectTree } from "./dialect.js";
 import { examplesFor } from "./examples.js";
@@ -51,7 +51,10 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-const ok = (c: any, data: unknown) => c.json({ api_version: c.env.API_VERSION ?? "1", data });
+const ok = (c: any, data: unknown, meta?: unknown) =>
+  c.json(meta === undefined
+    ? { api_version: c.env.API_VERSION ?? "1", data }
+    : { api_version: c.env.API_VERSION ?? "1", data, meta });
 const fail = (c: any, status: number, code: string, message: string) =>
   c.json({ api_version: c.env.API_VERSION ?? "1", error: { code, message } }, status);
 
@@ -201,10 +204,13 @@ app.get("/v1/kwic", async (c) => {
   const matchRaw = c.req.query("match") ?? "fold";
   const expandRaw = c.req.query("expand") ?? "none";
   const cliticRaw = c.req.query("clitic") ?? "any";
-  const lines = await kwic(c.get("db"), {
+  const limit = intParam(c.req.query("limit"), 50);
+  const offset = Math.max(0, intParam(c.req.query("offset"), 0));
+  const opts = {
     q,
     ctx: intParam(c.req.query("ctx"), 6),
-    limit: intParam(c.req.query("limit"), 50),
+    limit,
+    offset,
     sort: (SORTS.includes(sortRaw) ? sortRaw : "none") as NodeSort,
     match: (["fold", "exact", "prefix"].includes(matchRaw) ? matchRaw : "fold") as KwicMatch,
     expand: (["none", "plural", "all"].includes(expandRaw) ? expandRaw : "none") as "none" | "plural" | "all",
@@ -212,8 +218,10 @@ app.get("/v1/kwic", async (c) => {
     clitic: (["any", "only", "exclude"].includes(cliticRaw) ? cliticRaw : "any") as "any" | "only" | "exclude",
     ...dialectParams(c),
     author: c.req.query("author") ?? null,
-  });
-  return ok(c, lines);
+  };
+  // total runs concurrently with the page fetch (one extra COUNT round-trip).
+  const [lines, total] = await Promise.all([kwic(c.get("db"), opts), kwicTotal(c.get("db"), opts)]);
+  return ok(c, lines, { total, offset, limit });
 });
 
 // ───────────────────────────── /v1/collocation ───────────────────────────── //

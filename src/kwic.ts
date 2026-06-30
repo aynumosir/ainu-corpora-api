@@ -119,6 +119,7 @@ export async function kwic(
     q: string;
     ctx: number;                 // context tokens each side
     limit: number;
+    offset?: number;             // pagination offset (corpus order)
     sort: NodeSort;
     match: KwicMatch;
     expand: "none" | "plural" | "all";
@@ -138,14 +139,16 @@ export async function kwic(
   }
 }
 
-async function kwicImpl(
+/** Build the node-selection WHERE (match + upos + clitic + dialect + author) and
+ * its bound params, shared by the KWIC fetch and the total-count query so they
+ * can never drift. Returns null when a fold/expand match resolves to no keys. */
+async function buildNodeWhere(
   db: D1Database,
   opts: Parameters<typeof kwic>[1],
   useFold: boolean,
-): Promise<KwicLine[]> {
+): Promise<{ where: string; params: unknown[] } | null> {
   const q = opts.q.trim();
-  if (!q) return [];
-
+  if (!q) return null;
   const keyCol = useFold ? "surface_fold" : "surface_norm";
   const params: unknown[] = [];
   let nodeWhere: string;
@@ -157,7 +160,7 @@ async function kwicImpl(
     params.push(normToken(q));
   } else {
     const keys = await resolveNodeKeys(db, q, opts.expand, useFold);
-    if (!keys.length) return [];
+    if (!keys.length) return null;
     nodeWhere = `t.${keyCol} IN (${keys.map(() => "?").join(",")})`;
     params.push(...keys);
   }
@@ -171,15 +174,47 @@ async function kwicImpl(
     : dialectWhere("s", { dialect: opts.dialect ?? null });
   nodeWhere += dw.sql; params.push(...dw.params);
   if (opts.author) { nodeWhere += " AND instr(s.author, ?) > 0"; params.push(opts.author); }
+  return { where: nodeWhere, params };
+}
+
+/** Total number of matching node tokens (ignores limit/offset) for pagination.
+ * Mirrors kwic()'s fold→non-fold schema fallback. One COUNT round-trip. */
+export async function kwicTotal(db: D1Database, opts: Parameters<typeof kwic>[1]): Promise<number> {
+  const count = async (useFold: boolean): Promise<number> => {
+    const built = await buildNodeWhere(db, opts, useFold);
+    if (!built) return 0;
+    const row = await db
+      .prepare(`SELECT count(*) AS c FROM corpus_tokens t JOIN sentences s ON s.id = t.sentence_id WHERE ${built.where}`)
+      .bind(...built.params)
+      .first<{ c: number }>();
+    return row?.c ?? 0;
+  };
+  try {
+    return await count(true);
+  } catch (e) {
+    if (!missingSchema(e)) throw e;
+    return await count(false);
+  }
+}
+
+async function kwicImpl(
+  db: D1Database,
+  opts: Parameters<typeof kwic>[1],
+  useFold: boolean,
+): Promise<KwicLine[]> {
+  const built = await buildNodeWhere(db, opts, useFold);
+  if (!built) return [];
+  const { where: nodeWhere, params } = built;
 
   const lim = clampLimit(opts.limit);
+  const offset = Math.max(0, Math.floor(opts.offset ?? 0));
   const sql = `SELECT t.sentence_id, t.idx, t.char_start, t.char_end,
                       s.text, s.translation, s.dialect, s.author, s.uri
                FROM corpus_tokens t JOIN sentences s ON s.id = t.sentence_id
                WHERE ${nodeWhere}
                ORDER BY t.sentence_id, t.idx
-               LIMIT ?`;
-  params.push(lim);
+               LIMIT ? OFFSET ?`;
+  params.push(lim, offset);
   const { results: nodes } = await db.prepare(sql).bind(...params).all<{
     sentence_id: string; idx: number; char_start: number; char_end: number;
     text: string; translation: string | null; dialect: string | null;

@@ -151,6 +151,7 @@ paths:
         - { name: q, in: query, required: true, schema: { type: string } }
         - { name: ctx, in: query, schema: { type: integer, default: 6 }, description: context tokens each side }
         - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 }, description: "pagination offset; response carries meta:{total,offset,limit}" }
         - { name: match, in: query, schema: { type: string, enum: [fold, exact, prefix], default: fold } }
         - { name: sort, in: query, schema: { type: string, enum: [none, left, right, l1, l2, l3, r1, r2, r3, node, dialect, author], default: none } }
         - { name: expand, in: query, schema: { type: string, enum: [none, plural, all], default: none }, description: fold in inflected relatives (morph_forms) }

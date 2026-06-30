@@ -163,6 +163,7 @@
     <label class="opt">dialect <input type="text" id="dialect" class="sm" placeholder="沙流"></label>
     <label class="opt">limit <input type="text" id="limit" class="sm" value="50" style="width:56px"></label>
     <button class="go" type="submit">Search</button>
+    <input type="hidden" id="offset" value="0">
   </form>
 
   <div class="toolbar">
@@ -174,6 +175,7 @@
   <div class="examples" id="examples"></div>
   <div id="infl"></div>
   <div class="status" id="status">Type a word and search — e.g. <code>rayke</code> (KWIC), or try an example below.</div>
+  <div class="toolbar" id="pager"></div>
   <div class="hits" id="hits"></div>
 
   <footer>
@@ -222,12 +224,28 @@ function setMode(m) {
 }
 document.querySelectorAll(".modes button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 
-async function get(path) {
+async function getRaw(path) {
   const r = await fetch(API + path);
   const j = await r.json();
   if (j.error) throw new Error(j.error.code + ": " + j.error.message);
-  return j.data;
+  return j; // { data, meta? }
 }
+async function get(path) { return (await getRaw(path)).data; }
+
+// Pagination control (rendered for modes that return meta.total).
+function renderPager(meta, shown) {
+  const pg = $("#pager");
+  if (!meta || !meta.total || meta.total <= shown && meta.offset === 0) { pg.innerHTML = ""; return; }
+  const off = meta.offset || 0, lim = meta.limit || shown;
+  const from = meta.total ? off + 1 : 0, to = off + shown;
+  pg.innerHTML =
+    `<button class="ghost" id="pg-prev"${off <= 0 ? " disabled" : ""}>‹ prev</button>
+     <span class="opt">showing <b>${from}–${to}</b> of <b>${meta.total}</b></span>
+     <button class="ghost" id="pg-next"${to >= meta.total ? " disabled" : ""}>next ›</button>`;
+  $("#pg-prev")?.addEventListener("click", () => { $("#offset").value = Math.max(0, off - lim); run(); });
+  $("#pg-next")?.addEventListener("click", () => { $("#offset").value = off + lim; run(); });
+}
+function resetOffset() { const o = $("#offset"); if (o) o.value = "0"; }
 function done(msg) { $("#status").textContent = msg; }
 function src(d) {
   const label = [d.dialect, d.author].filter(Boolean).join(" · ");
@@ -263,6 +281,7 @@ function applyExample(e) {
   setIf("match", p.match); setIf("sort", p.sort); setIf("expand", p.expand); setIf("clitic", p.clitic);
   setIf("upos", p.upos); setIf("next", p.next_surface); setIf("measure", p.measure); setIf("span", p.span);
   setIf("window", p.window); setIf("lang", p.lang); setIf("dialect", p.dialect); setIf("limit", p.limit);
+  resetOffset();
   run();
 }
 
@@ -293,6 +312,7 @@ function bindWordClicks() {
       const w = el.dataset.w; if (!w) return;
       $("#q").value = w;
       if (mode === "structural" || mode === "text") setMode("kwic");
+      resetOffset();
       run();
     });
   });
@@ -335,7 +355,7 @@ async function showInflections(word) {
     ).join("");
     $("#infl").innerHTML = `<details class="infl" open><summary>${targets.size} related form(s) — click to search</summary>${items}</details>`;
     $("#infl").querySelectorAll("b[data-w]").forEach((b) =>
-      b.addEventListener("click", () => { $("#q").value = b.dataset.w; run(); }));
+      b.addEventListener("click", () => { $("#q").value = b.dataset.w; resetOffset(); run(); }));
   } catch (e) { $("#infl").innerHTML = ""; }
 }
 
@@ -416,10 +436,10 @@ $("#t-gloss").addEventListener("click", () => {
 // ─── shareable URL state (form ⇄ querystring, back/forward) ───
 const URL_FIELDS = { q: "#q", match: "#match", sort: "#sort", expand: "#expand", clitic: "#clitic",
   upos: "#upos", next: "#next", lemma: "#lemma", measure: "#measure", span: "#span",
-  window: "#window", lang: "#lang", dialect: "#dialect", limit: "#limit" };
+  window: "#window", lang: "#lang", dialect: "#dialect", limit: "#limit", offset: "#offset" };
 const URL_DEFAULTS = { q: "", match: "fold", sort: "none", expand: "none", clitic: "any",
   upos: "", next: "", lemma: "", measure: "log_dice", span: "both", window: "5",
-  lang: "any", dialect: "", limit: "50" };
+  lang: "any", dialect: "", limit: "50", offset: "0" };
 let suppressUrl = false;
 
 function writeUrl() {
@@ -451,17 +471,20 @@ async function run() {
   const dp = dialect ? `&dialect=${encodeURIComponent(dialect)}` : "";
   $("#status").textContent = "Searching…";
   $("#hits").innerHTML = "";
+  $("#pager").innerHTML = "";
   $("#t-csv").hidden = true;
   lastRows = []; lastCols = null;
   try {
     if (mode === "kwic") {
       if (!q) return done("Enter a word.");
-      const p = new URLSearchParams({ q, limit: $("#limit").value || "50", ctx: "6",
+      const p = new URLSearchParams({ q, limit: $("#limit").value || "50", offset: $("#offset").value || "0", ctx: "6",
         sort: $("#sort").value, match: $("#match").value, expand: $("#expand").value, clitic: $("#clitic").value });
       if (dialect) p.set("dialect", dialect);
-      const rows = await get(`/v1/kwic?${p}`);
+      const j = await getRaw(`/v1/kwic?${p}`);
+      const rows = j.data;
       lastRows = rows;
       $("#hits").innerHTML = rows.length ? rows.map((d) => kwicTokRow(d)).join("") : `<div class="empty">No matches.</div>`;
+      renderPager(j.meta, rows.length);
       showInflections(q);
     } else if (mode === "pos") {
       const upos = $("#upos").value, next = $("#next").value.trim(), lemma = $("#lemma").value.trim();
@@ -533,7 +556,7 @@ async function run() {
     done("Error — " + e.message);
   }
 }
-$("#f").addEventListener("submit", (e) => { e.preventDefault(); run(); });
+$("#f").addEventListener("submit", (e) => { e.preventDefault(); resetOffset(); run(); });
 
 // Restore from a shared/bookmarked URL, else default to KWIC.
 if (readUrl()) { suppressUrl = true; run().finally(() => { suppressUrl = false; }); }
