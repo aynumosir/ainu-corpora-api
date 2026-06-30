@@ -40,6 +40,28 @@ GET /v1/pos?upos=VERB&next_surface==an&limit=20
 | All forms of lemma `arpa` | `/v1/pos?lemma=arpa` |
 | `rayke` in Sakhalin only | `/v1/concordance?q=rayke&dialect=樺太` |
 
+## Advanced capabilities (Phase 4)
+
+| Goal | Query |
+|---|---|
+| Annotated KWIC (clickable, POS/gloss, accent-folded) | `/v1/kwic?q=ramat&sort=r1` |
+| Search a verb **and** its plural together | `/v1/kwic?q=arpa&expand=plural` |
+| 1SG.A clitic in context | `/v1/kwic?q=ku=&clitic=only` |
+| Collocates of `kamuy` (logDice) | `/v1/collocation?q=kamuy&measure=log_dice` |
+| Noun–noun compounds | `/v1/structural?pattern=[upos=NOUN] [upos=NOUN]` |
+| `a=` + any + VERB | `/v1/structural?pattern=[surface=a=] [] [upos=VERB]` |
+| Where does `kamuy` occur? | `/v1/analytics?q=kamuy` |
+| Inflected relatives of `arpa` | `/v1/inflections?word=arpa` |
+| Discover runnable examples | `/v1/examples?mode=kwic` |
+
+- **Accent folding:** `/v1/kwic` and `/v1/analytics` default to `match=fold`,
+  which is pitch/length-insensitive (`nea`≡`néa`, `ramat`≡`rámat`). Use
+  `match=exact` to keep diacritics, `match=prefix` for stems.
+- **`/v1/kwic` tokens** carry `{i,s,n,p,l,x,f,cl,node?}` so a UI can show POS and
+  lemma under each word and make every token clickable (search-on-click).
+- **Structural syntax:** `[upos=…]`, `[surface=…]`, `[lemma=…]`,
+  `[surface=ku.*]` (prefix), `[]` (any); bare word→surface, bare ALLCAPS→upos.
+
 ## Same data via MCP
 The MCP (`mcp.aynu.org`) proxies these as the `corpus_concordance` and
 `corpus_pos` tools (it calls this API over a service binding) — so LLM agents

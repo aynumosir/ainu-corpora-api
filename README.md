@@ -66,6 +66,26 @@ recorded per token).
 | `GET /v1/concordance` | `q` (required), `window` (40), `limit` (50), `sort=none\|left\|right`, `match=exact\|prefix`, `dialect`, `author` | KWIC `{sentence_id,left,node,right,translation,dialect,author,uri}[]` |
 | `GET /v1/pos` | at least one of `upos`,`lemma`,`surface`,`next_upos`,`next_surface`; plus `window`,`limit`,`dialect`,`author` | KWIC lines + `{upos,lemma}`. Adjacency via `next_*` (self-join on `idx+1`) — e.g. `?upos=VERB&next_surface==an` |
 
+### Advanced token layer (Phase 4)
+
+Adds an accent-folded search key (`surface_fold`) and a morphology table
+(`morph_forms`, from [`ainu-morpheme-database`](../ainu-morpheme-database)) — see
+`migrations/0002_fold_and_morph.sql` and `src/normalize.ts`.
+
+| Method · Route | Params | Returns |
+|---|---|---|
+| `GET /v1/kwic` | `q` (req), `ctx` (6), `limit` (50), `match=fold\|exact\|prefix` (def `fold`), `sort=none\|l1..l3\|r1..r3\|node\|dialect\|author`, `expand=none\|plural\|all`, `upos`, `clitic=any\|only\|exclude`, `dialect`, `author` | Annotated KWIC: left/node/right **token arrays** (`{i,s,n,p,l,x,f,cl}`) + `*_text`. Clickable words, per-token POS/gloss, accent-insensitive, singular↔plural. |
+| `GET /v1/collocation` | `q` (req), `window` (5, ≤10), `span=both\|left\|right`, `measure=log_dice\|t_score\|mi`, `minCount` (3), `limit` (50), `dialect`, `author` | `{node,node_freq,corpus_tokens,collocates[]}` with logDice / t-score / MI |
+| `GET /v1/structural` | `pattern` (req), `limit` (50), `dialect`, `author` | CQL-lite sequence search (`[upos=NOUN] [upos=NOUN]`, `[surface=ku.*]`, `[]` wildcard). Adjacent self-joins, ≤6 positions. |
+| `GET /v1/analytics` | `q` (req), `match` (def `fold`), `top` (10) | `{node,total,dialects[],authors[],collections[],upos[]}` distribution |
+| `GET /v1/inflections` | `word` (req) | `{query,fold,forms[]}` — singular↔plural & possessed forms |
+| `GET /v1/examples` | `mode` (optional) | Curated runnable examples `{mode,label,desc,params,path}[]` |
+
+**Normalization / folding.** `match=fold` (the KWIC default) is **accent-
+insensitive**: pitch acute (`á`) and length circumflex/macron (`â`/`ā`) are
+folded, so `nea` finds `néa` and `ramat` finds `rámat`. `surface` and
+`surface_norm` keep the original for display. See `src/normalize.ts`.
+
 Rebuild the token layer:
 ```sh
 # 1. tokenize (light, no torch):
@@ -78,6 +98,17 @@ PYTHONPATH=../ainu-morpheme-tagger uv run --python 3.12 --with "spacy>=3.8.4" --
 # 3. load (local dry-run, then Turso):
 bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl          # local build/corpus.db + validation
 TURSO_DATABASE_URL=… TURSO_AUTH_TOKEN=… bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl --turso
+```
+
+Phase 4 adds two more inputs, both folded into the same loader:
+
+```sh
+# 4. morphology (inflection) table from the sibling morpheme DB:
+bun scripts/build_morph.mjs        # → build/morph_forms.jsonl (singular↔plural, possessed)
+# load_tokens.mjs then:
+#   - backfills corpus_tokens.surface_fold (accent-folded key) at load time, and
+#   - loads build/morph_forms.jsonl into morph_forms (if present).
+# migrations/0002_fold_and_morph.sql is applied automatically by the loader.
 ```
 
 ## Develop

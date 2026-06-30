@@ -31,6 +31,10 @@ import {
   type CorpusLang,
 } from "./db.js";
 import { concordance, posSearch, type SortMode, type MatchMode } from "./tokens.js";
+import { kwic, inflections, type NodeSort, type KwicMatch } from "./kwic.js";
+import { collocations, structural, wordAnalytics } from "./analysis.js";
+import { dialectTree } from "./dialect.js";
+import { examplesFor } from "./examples.js";
 
 type Vars = { db: D1Database };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -39,7 +43,10 @@ app.use("*", cors());
 
 // Build the libSQL shim once per request and stash it on the context.
 app.use("*", async (c, next) => {
-  const db = new LibsqlDb(c.env.DATABASE_URL, c.env.DATABASE_AUTH_TOKEN) as unknown as D1Database;
+  // Test/local hook: a pre-built D1-shaped db may be injected via env (used by
+  // the local bun:sqlite dev harness). Never set in production.
+  const injected = (c.env as unknown as { __TEST_DB__?: D1Database }).__TEST_DB__;
+  const db = injected ?? (new LibsqlDb(c.env.DATABASE_URL, c.env.DATABASE_AUTH_TOKEN) as unknown as D1Database);
   c.set("db", db);
   await next();
 });
@@ -57,6 +64,20 @@ function intParam(v: string | undefined, dflt: number): number {
 function boolParam(v: string | undefined, dflt: boolean): boolean {
   if (v == null || v === "") return dflt;
   return v === "1" || v.toLowerCase() === "true";
+}
+
+/**
+ * Read the three-level dialect filter from query params, shared by every search
+ * route. `region` = lv1 (北海道|樺太, the Hokkaido/Sakhalin tab); `dialect_path`
+ * = a hierarchical prefix (北海道/南西 or 北海道/南西/沙流, the sub-select);
+ * `dialect` = legacy free-text substring. All optional; all ANDed downstream.
+ */
+function dialectParams(c: any): { dialect: string | null; region: string | null; dialectPath: string | null } {
+  return {
+    dialect: c.req.query("dialect") ?? null,
+    region: c.req.query("region") ?? null,
+    dialectPath: c.req.query("dialect_path") ?? null,
+  };
 }
 
 app.get("/health", (c) => ok(c, { ok: true, service: "ainu-corpora-api" }));
@@ -166,6 +187,112 @@ app.get("/v1/pos", async (c) => {
   }
   return ok(c, lines);
 });
+
+// ───────────────────────────── /v1/kwic (annotated KWIC) ───────────────────────────── //
+// Token-level KWIC: each line carries left/node/right TOKEN arrays (surface +
+// upos + lemma + xpos + feats + clitic flag) so the UI can show POS/gloss under
+// every word, make words clickable, sort by the Nth neighbour, fold accents, and
+// fold singular↔plural. `left_text`/`node_text`/`right_text` keep the plain grid.
+app.get("/v1/kwic", async (c) => {
+  const q = c.req.query("q") ?? "";
+  if (!q.trim()) return fail(c, 400, "missing_query", "q is required");
+  const sortRaw = c.req.query("sort") ?? "none";
+  const SORTS = ["none", "left", "right", "l1", "l2", "l3", "r1", "r2", "r3", "node", "dialect", "author"];
+  const matchRaw = c.req.query("match") ?? "fold";
+  const expandRaw = c.req.query("expand") ?? "none";
+  const cliticRaw = c.req.query("clitic") ?? "any";
+  const lines = await kwic(c.get("db"), {
+    q,
+    ctx: intParam(c.req.query("ctx"), 6),
+    limit: intParam(c.req.query("limit"), 50),
+    sort: (SORTS.includes(sortRaw) ? sortRaw : "none") as NodeSort,
+    match: (["fold", "exact", "prefix"].includes(matchRaw) ? matchRaw : "fold") as KwicMatch,
+    expand: (["none", "plural", "all"].includes(expandRaw) ? expandRaw : "none") as "none" | "plural" | "all",
+    nodeUpos: c.req.query("upos") ?? null,
+    clitic: (["any", "only", "exclude"].includes(cliticRaw) ? cliticRaw : "any") as "any" | "only" | "exclude",
+    ...dialectParams(c),
+    author: c.req.query("author") ?? null,
+  });
+  return ok(c, lines);
+});
+
+// ───────────────────────────── /v1/collocation ───────────────────────────── //
+// Tokens co-occurring within ±window positions of a node, scored by
+// logDice / t-score / MI. e.g. ?q=kamuy&window=5&measure=log_dice
+app.get("/v1/collocation", async (c) => {
+  const q = c.req.query("q") ?? "";
+  if (!q.trim()) return fail(c, 400, "missing_query", "q is required");
+  const spanRaw = c.req.query("span") ?? "both";
+  const measRaw = c.req.query("measure") ?? "log_dice";
+  const data = await collocations(c.get("db"), {
+    q,
+    window: intParam(c.req.query("window"), 5),
+    span: (["both", "left", "right"].includes(spanRaw) ? spanRaw : "both") as "both" | "left" | "right",
+    minCount: intParam(c.req.query("minCount"), 3),
+    limit: intParam(c.req.query("limit"), 50),
+    measure: (["log_dice", "t_score", "mi"].includes(measRaw) ? measRaw : "log_dice") as "log_dice" | "t_score" | "mi",
+    ...dialectParams(c),
+    author: c.req.query("author") ?? null,
+  });
+  return ok(c, data);
+});
+
+// ───────────────────────────── /v1/structural (CQL-lite) ───────────────────────────── //
+// Adjacent token-sequence search. e.g. ?pattern=[upos=NOUN] [upos=NOUN]
+app.get("/v1/structural", async (c) => {
+  const pattern = c.req.query("pattern") ?? c.req.query("q") ?? "";
+  if (!pattern.trim()) return fail(c, 400, "missing_pattern", "pattern is required (e.g. [upos=VERB] [surface==an])");
+  const lines = await structural(c.get("db"), {
+    pattern,
+    limit: intParam(c.req.query("limit"), 50),
+    ...dialectParams(c),
+    author: c.req.query("author") ?? null,
+  });
+  return ok(c, lines);
+});
+
+// ───────────────────────────── /v1/analytics ───────────────────────────── //
+// Distribution of a node word across dialect/author/collection + its POS spread.
+app.get("/v1/analytics", async (c) => {
+  const q = c.req.query("q") ?? "";
+  if (!q.trim()) return fail(c, 400, "missing_query", "q is required");
+  const matchRaw = c.req.query("match") ?? "fold";
+  const data = await wordAnalytics(c.get("db"), {
+    q,
+    match: (["fold", "exact", "prefix"].includes(matchRaw) ? matchRaw : "fold") as "fold" | "exact" | "prefix",
+    top: intParam(c.req.query("top"), 10),
+    ...dialectParams(c),
+  });
+  return ok(c, data);
+});
+
+// ───────────────────────────── /v1/inflections ───────────────────────────── //
+// Inflectional relatives of a word (singular↔plural, possessed forms) from the
+// morpheme-database morphology layer. Powers the UI inflection chooser.
+app.get("/v1/inflections", async (c) => {
+  const word = c.req.query("word") ?? c.req.query("q") ?? "";
+  if (!word.trim()) return fail(c, 400, "missing_word", "word is required");
+  return ok(c, await inflections(c.get("db"), word));
+});
+
+// ───────────────────────────── /v1/dialects ───────────────────────────── //
+// The three-level dialect taxonomy present in the corpus, as a tree:
+//   region (北海道|樺太) → area (南西/北東/西海岸/東海岸) → specific dialect.
+// Powers the UI Hokkaido/Sakhalin tab + dialect sub-select.
+app.get("/v1/dialects", async (c) => {
+  try {
+    return ok(c, await dialectTree(c.get("db")));
+  } catch (e) {
+    // Pre-Phase-5 schema (no dialect_path column) → empty tree, not a 500.
+    if (/no such column/i.test(String(e))) return ok(c, []);
+    throw e;
+  }
+});
+
+// ───────────────────────────── /v1/examples ───────────────────────────── //
+// Curated, runnable search examples (a self-describing tour of every surface).
+// Optionally filter by ?mode=kwic|pos|collocation|structural|analytics|inflection|text
+app.get("/v1/examples", (c) => ok(c, examplesFor(c.req.query("mode"))));
 
 app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.path}`));
 app.onError((err, c) => {

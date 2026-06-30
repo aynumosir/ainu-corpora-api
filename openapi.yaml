@@ -51,6 +51,43 @@ components:
           properties:
             upos: { type: string, nullable: true }
             lemma: { type: string, nullable: true }
+    KwicToken:
+      type: object
+      description: One token in an annotated KWIC window.
+      properties:
+        i: { type: integer, description: index within the sentence }
+        s: { type: string, description: surface (as printed) }
+        n: { type: string, description: surface_norm }
+        p: { type: string, nullable: true, description: UPOS }
+        l: { type: string, nullable: true, description: lemma }
+        x: { type: string, nullable: true, description: xpos (fine tag) }
+        f: { type: string, nullable: true, description: morphological features }
+        cl: { type: integer, description: 1 if clitic }
+        node: { type: boolean, description: present+true on the node token }
+    KwicAnnotatedLine:
+      type: object
+      properties:
+        sentence_id: { type: string }
+        left: { type: array, items: { $ref: "#/components/schemas/KwicToken" } }
+        node: { type: array, items: { $ref: "#/components/schemas/KwicToken" } }
+        right: { type: array, items: { $ref: "#/components/schemas/KwicToken" } }
+        left_text: { type: string }
+        node_text: { type: string }
+        right_text: { type: string }
+        translation: { type: string, nullable: true }
+        dialect: { type: string, nullable: true }
+        author: { type: string, nullable: true }
+        uri: { type: string, nullable: true }
+    Collocate:
+      type: object
+      properties:
+        token: { type: string }
+        upos: { type: string, nullable: true }
+        freq: { type: integer, description: co-occurrences in the window }
+        total: { type: integer, description: collocate's total corpus frequency }
+        log_dice: { type: number, description: logDice association }
+        t_score: { type: number }
+        mi: { type: number, description: pointwise mutual information }
 paths:
   /health:
     get:
@@ -100,6 +137,89 @@ paths:
       responses:
         "200": { description: "PosLine[] in data" }
         "400": { description: "error: missing_filter" }
+  /v1/kwic:
+    get:
+      summary: Annotated, token-level KWIC (clickable words, POS/gloss, accent-folding, inflection)
+      description: >
+        Richer than /v1/concordance: each line carries left/node/right TOKEN
+        arrays (surface + upos + lemma + xpos + feats + clitic flag) plus plain
+        left_text/node_text/right_text. match=fold (default) is accent-insensitive
+        (néa == nea, rámat == ramat). expand=plural also surfaces a verb's plural
+        (e.g. arpa → paye). sort supports l1..l3 / r1..r3 (Nth neighbour),
+        node, dialect, author.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: ctx, in: query, schema: { type: integer, default: 6 }, description: context tokens each side }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: match, in: query, schema: { type: string, enum: [fold, exact, prefix], default: fold } }
+        - { name: sort, in: query, schema: { type: string, enum: [none, left, right, l1, l2, l3, r1, r2, r3, node, dialect, author], default: none } }
+        - { name: expand, in: query, schema: { type: string, enum: [none, plural, all], default: none }, description: fold in inflected relatives (morph_forms) }
+        - { name: upos, in: query, schema: { type: string }, description: constrain the node's POS }
+        - { name: clitic, in: query, schema: { type: string, enum: [any, only, exclude], default: any } }
+        - { name: dialect, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+      responses:
+        "200": { description: "KwicAnnotatedLine[] in data" }
+  /v1/collocation:
+    get:
+      summary: Collocates of a node word, scored by logDice / t-score / MI
+      description: >
+        Tokens co-occurring within ±window token positions of the node, with
+        association measures. span restricts to one side. PUNCT is excluded.
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: window, in: query, schema: { type: integer, default: 5 }, description: "± token positions (max 10)" }
+        - { name: span, in: query, schema: { type: string, enum: [both, left, right], default: both } }
+        - { name: measure, in: query, schema: { type: string, enum: [log_dice, t_score, mi], default: log_dice }, description: sort key }
+        - { name: minCount, in: query, schema: { type: integer, default: 3 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: dialect, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+      responses:
+        "200": { description: "{ node, node_freq, corpus_tokens, collocates: Collocate[] } in data" }
+  /v1/structural:
+    get:
+      summary: Structural (CQL-lite) adjacent token-sequence search
+      description: >
+        Match a sequence of token constraints via idx+1 self-joins. Pattern
+        syntax: [upos=VERB] [surface=arpa] [lemma=arpa] [surface=ku.*] (prefix)
+        [] (wildcard); bare word → surface, bare ALLCAPS → upos; & joins
+        constraints in one position. Max 6 positions. e.g. [upos=NOUN] [upos=NOUN].
+      parameters:
+        - { name: pattern, in: query, required: true, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: dialect, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+      responses:
+        "200": { description: "StructuralLine[] in data (match[] + match_text + left_text/right_text)" }
+        "400": { description: "error: missing_pattern" }
+  /v1/analytics:
+    get:
+      summary: Distribution of a node word across dialect/author/collection + POS spread
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: match, in: query, schema: { type: string, enum: [fold, exact, prefix], default: fold } }
+        - { name: top, in: query, schema: { type: integer, default: 10 } }
+      responses:
+        "200": { description: "{ node, total, dialects[], authors[], collections[], upos[] } in data" }
+  /v1/inflections:
+    get:
+      summary: Inflectional relatives of a word (singular↔plural, possessed forms)
+      description: >
+        From the ainu-morpheme-database morphology layer (morph_forms). Matches a
+        word as either lemma or surface and returns linked forms. Powers the UI
+        inflection chooser and expand=plural in /v1/kwic.
+      parameters:
+        - { name: word, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "{ query, fold, forms[] } in data" }
+  /v1/examples:
+    get:
+      summary: Curated, runnable search examples (self-describing tour)
+      parameters:
+        - { name: mode, in: query, schema: { type: string, enum: [kwic, pos, collocation, structural, analytics, inflection, text] } }
+      responses:
+        "200": { description: "SearchExample[] in data ({ mode, label, desc, params, path })" }
   /v1/stats:
     get:
       summary: Corpus totals + top dialect distribution

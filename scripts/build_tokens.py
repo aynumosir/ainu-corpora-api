@@ -71,11 +71,17 @@ def main() -> None:
             r = json.loads(line)
             text = r.get("text") or ""
             sid = r["id"]
+            # Three-level dialect taxonomy (already on the source rows). lv1 is
+            # the Hokkaido/Sakhalin split; lv3 may be multi-valued. Keep the raw
+            # arrays; load_tokens.mjs derives region/dialect_path/dialect_paths.
             fs.write(json.dumps({
                 "id": sid, "o": order, "text": text,
                 "tr": r.get("translation"), "dia": r.get("dialect"),
                 "au": r.get("author"), "col": r.get("collection_lv1") or r.get("collection"),
                 "doc": r.get("document"), "uri": r.get("uri"),
+                "d1": r.get("dialect_lv1") or [],
+                "d2": r.get("dialect_lv2") or [],
+                "d3": r.get("dialect_lv3") or [],
             }, ensure_ascii=False) + "\n")
             n_sent += 1
             for i, t in enumerate(tokenizer(text)):
