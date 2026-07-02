@@ -28,6 +28,8 @@ const tok = (idx: number, surface: string, extra: any = {}) => ({
   sentence_id: extra.sid ?? "s1", idx, surface, surface_norm: surface.toLowerCase(),
   upos: extra.upos ?? null, lemma: extra.lemma ?? null, xpos: extra.xpos ?? null,
   feats_json: extra.feats ?? null, is_clitic: extra.cl ?? 0,
+  pos_display: extra.posDisplay ?? null, gloss_en: extra.gloss ?? null, morph_category: extra.morphCategory ?? null,
+  alternates: extra.alternates ?? null,
 });
 
 test("fold match binds the folded key, exact binds surface_norm", async () => {
@@ -89,6 +91,50 @@ test("builds per-token left/node/right windows from sentence tokens", async () =
   expect(out[0].left.map((t) => t.s)).toEqual(["ku", "="]);
   expect(out[0].right.map((t) => t.s)).toEqual(["wa", "an"]);
   expect(out[0].node_text).toBe("arpa");
+});
+
+test("morpheme DB gloss row overrides display POS and adds gloss", async () => {
+  // Raw tagger says PART, morpheme DB says personal clitic => display PERS + 4.A=.
+  const node = { sentence_id: "s1", idx: 0, char_start: 0, char_end: 2,
+    text: "a=rayke", translation: null, dialect: null, author: null, uri: null };
+  const sentToks = [
+    tok(0, "a=", { upos: "PART", posDisplay: "PERS", gloss: "4.A=", morphCategory: "pers", cl: 1 }),
+    tok(1, "rayke", { upos: "VERB", gloss: "kill", morphCategory: "vt" }),
+  ];
+  const { db } = fakeDb([[node], sentToks]);
+  const out = await kwic(db, { q: "a=", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  expect(out[0].node[0].s).toBe("a=");
+  expect(out[0].node[0].p).toBe("PERS");
+  expect(out[0].node[0].u).toBe("PART");
+  expect(out[0].node[0].g).toBe("4.A=");
+  expect(out[0].node[0].mc).toBe("pers");
+  expect(out[0].right[0].p).toBe("VERB");
+  expect(out[0].right[0].g).toBe("kill");
+});
+
+test("homograph alternates parse into the token's alt array", async () => {
+  const node = { sentence_id: "s1", idx: 0, char_start: 0, char_end: 2,
+    text: "pa", translation: null, dialect: null, author: null, uri: null };
+  const sentToks = [
+    tok(0, "pa", { upos: "NOUN", posDisplay: "NOUN", gloss: "head", morphCategory: "n",
+      alternates: JSON.stringify([{ p: null, g: "PL", mc: "sfx" }, { p: "NOUN", g: "mouth", mc: "n" }]) }),
+  ];
+  const { db } = fakeDb([[node], sentToks]);
+  const out = await kwic(db, { q: "pa", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  const t = out[0].node[0];
+  expect(t.g).toBe("head");
+  expect(t.alt?.length).toBe(2);
+  expect(t.alt?.[0]).toEqual({ p: null, g: "PL", mc: "sfx" });
+  expect(t.alt?.[1].g).toBe("mouth");
+});
+
+test("token without alternates has no alt field", async () => {
+  const node = { sentence_id: "s1", idx: 0, char_start: 0, char_end: 5,
+    text: "rayke", translation: null, dialect: null, author: null, uri: null };
+  const sentToks = [tok(0, "rayke", { upos: "VERB", gloss: "kill", morphCategory: "vt" })];
+  const { db } = fakeDb([[node], sentToks]);
+  const out = await kwic(db, { q: "rayke", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  expect(out[0].node[0].alt).toBeUndefined();
 });
 
 test("standalone glottal-stop markers are skipped in KWIC context windows", async () => {

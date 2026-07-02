@@ -22,7 +22,7 @@ function likeEscape(q: string): string {
 }
 function missingSchema(e: unknown): boolean {
   const s = String(e instanceof Error ? e.message : e);
-  return /no such column:.*(surface_fold|region|dialect_path)|no such table: morph_forms/i.test(s);
+  return /no such column:.*(surface_fold|region|dialect_path|alternates)|no such table: (morph_forms|morph_gloss)/i.test(s);
 }
 
 /** A single token in a KWIC line (compact keys keep the JSON small). */
@@ -30,12 +30,23 @@ export interface KwicToken {
   i: number;            // idx within the sentence
   s: string;            // surface (as printed)
   n: string;            // surface_norm
-  p: string | null;     // upos
+  p: string | null;     // display POS (morph_gloss.pos_display ?? upos), e.g. PERS
+  u?: string | null;    // raw tagger UPOS
   l: string | null;     // lemma
   x: string | null;     // xpos (fine tag)
   f: string | null;     // feats (morph features string)
+  g?: string | null;    // short English gloss from morpheme-database
+  mc?: string | null;   // morpheme DB category (pers/vt/n/sfx/...)
   cl: number;           // 1 if clitic (ku= / =an …)
   node?: boolean;       // true on the matched node token(s)
+  alt?: KwicGlossAlt[]; // other homograph readings of this surface (pa: head → PL/mouth)
+}
+
+/** An alternate (non-displayed) reading of a homographous surface form. */
+export interface KwicGlossAlt {
+  p: string | null;     // display POS of the alternate reading
+  g: string;            // its gloss
+  mc: string | null;    // its morpheme DB category
 }
 
 export interface KwicLine {
@@ -69,11 +80,24 @@ interface RawTok {
   xpos: string | null;
   feats_json: string | null;
   is_clitic: number;
+  pos_display?: string | null;
+  gloss_en?: string | null;
+  morph_category?: string | null;
+  alternates?: string | null;
 }
 
+const parseAlt = (s: string | null | undefined): KwicGlossAlt[] | undefined => {
+  if (!s) return undefined;
+  try {
+    const a = JSON.parse(s);
+    return Array.isArray(a) && a.length ? a : undefined;
+  } catch { return undefined; }
+};
+
 const toTok = (r: RawTok): KwicToken => ({
-  i: r.idx, s: r.surface, n: r.surface_norm, p: r.upos, l: r.lemma,
-  x: r.xpos, f: r.feats_json, cl: r.is_clitic ? 1 : 0,
+  i: r.idx, s: r.surface, n: r.surface_norm, p: r.pos_display ?? r.upos, u: r.upos, l: r.lemma,
+  x: r.xpos, f: r.feats_json, g: r.gloss_en ?? null, mc: r.morph_category ?? null, cl: r.is_clitic ? 1 : 0,
+  alt: parseAlt(r.alternates),
 });
 
 /** Resolve the set of folded node keys to match, expanding via morph_forms. */
@@ -225,17 +249,39 @@ async function kwicImpl(
   // Load all token rows for the matched sentences (sentences are short).
   const sentIds = [...new Set(nodes.map((n) => n.sentence_id))];
   const tokById = new Map<string, RawTok[]>();
+  let canJoinGloss = true;
   // Chunk the IN-list so we never blow the SQLite variable limit.
   for (let i = 0; i < sentIds.length; i += 200) {
     const slice = sentIds.slice(i, i + 200);
-    const { results } = await db
-      .prepare(
-        `SELECT sentence_id, idx, surface, surface_norm, upos, lemma, xpos, feats_json, is_clitic
-         FROM corpus_tokens WHERE sentence_id IN (${slice.map(() => "?").join(",")})
-         ORDER BY sentence_id, idx`,
-      )
-      .bind(...slice)
-      .all<RawTok>();
+    let results: RawTok[] | undefined;
+    if (canJoinGloss) {
+      try {
+        ({ results } = await db
+          .prepare(
+            `SELECT t.sentence_id, t.idx, t.surface, t.surface_norm, t.upos, t.lemma, t.xpos, t.feats_json, t.is_clitic,
+                    mg.pos_display, mg.gloss_en, mg.category AS morph_category, mg.alternates
+             FROM corpus_tokens t
+             LEFT JOIN morph_gloss mg ON mg.key_fold = t.surface_fold
+             WHERE t.sentence_id IN (${slice.map(() => "?").join(",")})
+             ORDER BY t.sentence_id, t.idx`,
+          )
+          .bind(...slice)
+          .all<RawTok>());
+      } catch (e) {
+        if (!missingSchema(e)) throw e;
+        canJoinGloss = false;
+      }
+    }
+    if (!canJoinGloss) {
+      ({ results } = await db
+        .prepare(
+          `SELECT sentence_id, idx, surface, surface_norm, upos, lemma, xpos, feats_json, is_clitic
+           FROM corpus_tokens WHERE sentence_id IN (${slice.map(() => "?").join(",")})
+           ORDER BY sentence_id, idx`,
+        )
+        .bind(...slice)
+        .all<RawTok>());
+    }
     for (const r of results ?? []) {
       let arr = tokById.get(r.sentence_id);
       if (!arr) tokById.set(r.sentence_id, (arr = []));
