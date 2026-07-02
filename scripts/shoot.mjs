@@ -57,6 +57,9 @@ async function shoot(name, scheme, fn) {
 
 const go = (p) => p.click("button.go");
 await shoot("ui-kwic-gloss", "light", async (p) => { await p.fill("#q", "rayke"); await p.selectOption("#sort", "r1"); await go(p); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
+// Homograph alternates: `pa` displays NOUN “head” with alt PL / mouth (gloss mode).
+await shoot("ui-kwic-alt-light", "light", async (p) => { await p.fill("#q", "pa"); await go(p); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
+await shoot("ui-kwic-alt-dark", "dark", async (p) => { await p.fill("#q", "pa"); await go(p); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
 await shoot("ui-kwic-dark", "dark", async (p) => { await p.fill("#q", "arpa"); await p.selectOption("#expand", "plural"); await go(p); await p.waitForSelector(".hit"); });
 await shoot("ui-pos-lemma", "light", async (p) => { await p.click('.modes button[data-mode="pos"]'); await p.fill("#lemma", "arpa"); await go(p); await p.waitForSelector(".hit"); });
 await shoot("ui-collocation", "light", async (p) => { await p.click('.modes button[data-mode="collocation"]'); await p.fill("#q", "kamuy"); await go(p); await p.waitForSelector("table.data"); });

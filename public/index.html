@@ -63,7 +63,13 @@
   .kwic .n { background: var(--node-bg); color: var(--node-ink); padding: 1px 5px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
   .tok { cursor: pointer; padding: 0 1px; border-radius: 3px; }
   .tok:hover { background: var(--accent-soft); }
+  /* Homograph: this surface has other attested readings (see tooltip / gloss). */
+  .tok.has-alt { text-decoration: underline dotted var(--bar); text-underline-offset: 2px; }
+  .tok .g .alt { display: none; color: var(--muted); font-size: 8.5px; font-style: italic; }
+  body.gloss .tok.has-alt .g .alt { display: block; }
   .tok .g { display: none; font-family: var(--ui); font-size: 9.5px; color: var(--pos); line-height: 1.1; }
+  .tok .g .posline, .tok .g .gl { display: block; }
+  .tok .gl { color: var(--muted); font-size: 9px; }
   /* Gloss mode: each token becomes a centered inline-block stack (surface over
      POS/lemma); columns wrap but each word's gloss stays under it. */
   body.gloss .tok { display: inline-block; vertical-align: top; text-align: center; }
@@ -287,9 +293,18 @@ function applyExample(e) {
 
 // ─── token rendering (clickable + optional gloss) ───
 function tokHtml(t, isNode) {
-  const cls = "tok" + (t.cl ? " clitic" : "") + (isNode ? " node" : "");
-  const gl = (t.p || t.l) ? `<span class="g">${esc(t.p || "")}${t.l && t.l !== t.n ? " " + esc(t.l) : ""}</span>` : "";
-  return `<span class="${cls}" data-w="${esc(t.n)}" data-p="${esc(t.p||"")}" title="${esc((t.p||"")+(t.l?" · "+t.l:"")+(t.x?" · "+t.x:""))}">${esc(t.s)}${gl}</span>`;
+  // Homograph readings that lost the display slot (pa: head → PL / mouth). Marked
+  // with a dotted underline; the full list lives in the hover tooltip.
+  const alt = Array.isArray(t.alt) && t.alt.length
+    ? t.alt.map((a) => [a.p, a.g].filter(Boolean).join(" ")).filter(Boolean) : null;
+  const cls = "tok" + (t.cl ? " clitic" : "") + (isNode ? " node" : "") + (alt ? " has-alt" : "");
+  const gloss = t.g || (t.l && t.l !== t.n ? t.l : "");
+  const altLine = alt ? `<span class="alt">also: ${esc(alt.slice(0, 2).join(" · "))}${alt.length > 2 ? " …" : ""}</span>` : "";
+  const gl = (t.p || gloss)
+    ? `<span class="g"><span class="posline">${esc(t.p || "")}</span>${gloss ? `<span class="gl">${esc(gloss)}</span>` : ""}${altLine}</span>` : "";
+  const title = [t.p, t.g, t.l && t.l !== t.n ? t.l : "", t.u && t.u !== t.p ? "raw " + t.u : "", t.x].filter(Boolean).join(" · ")
+    + (alt ? `\nalso: ${alt.join(" · ")}` : "");
+  return `<span class="${cls}" data-w="${esc(t.n)}" data-p="${esc(t.p||"")}" title="${esc(title)}">${esc(t.s)}${gl}</span>`;
 }
 function kwicTokRow(d, badge) {
   const L = (d.left||[]).map((t) => tokHtml(t, false)).join(" ");
