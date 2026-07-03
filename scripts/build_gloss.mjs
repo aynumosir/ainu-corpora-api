@@ -120,7 +120,7 @@ function cleanGloss(g) {
   //   "to take charge of ..., to look after ..." → "take charge"
   //   "a person who came from ..." → "person"
   s = t.split(/[;,]/)[0].trim();           // keep first concise sense
-  s = s.replace(/^(transitive|intransitive)\s+to\s+/i, "");
+  s = s.replace(/^(transitive|intransitive|ditransitive)\s+to\s+/i, "");
   s = s.replace(/^to\s+/i, "");
   s = s.replace(/^be\s+/i, "");
   s = s.replace(/^(?:the|an?)\s+/i, "");
@@ -575,6 +575,22 @@ forceLiteral("u", "FILLER", "INTJ");          // yukar metric vocable: “V u po
 forceLiteral("v", "(verse)", "X");            // yukar line marker
 forceLiteral("b", "(speaker)", "X");          // dialogue speaker label “B:”
 
+// ── Owner-decided glosses (mkpoli, 2026-07-04):
+forceLiteral("konno", "while", "SCONJ");        // yukar kor-no temporal converb
+forceLiteral("sirkunpato", "(refrain)", "X");   // kamuy-yukar sakehe
+forceLiteral("heino", "(refrain)", "X");        // kamuy-yukar sakehe
+forceLiteral("aokai", "you", "PRON");           // Batchelor a-okai 2nd person (NOT a+okai)
+// Owner batch 2 (2026-07-04, verified in ../ainu-dictionaries + corpus):
+forceLiteral("eino", "(refrain)", "X");         // heino family — repeats through a performance
+forceLiteral("hemnoye", "(refrain)", "X");      // 448 occ / 2 sources, line-initial sakehe
+forceLiteral("nope", "(refrain)", "X");         // 208 occ / 1 source, line-initial sakehe
+forceLiteral("ounno", "from then on", "ADV");   // 静内【後副】～からずっと; FF-Ainu それから
+forceLiteral("korsi", "child", "NOUN");         // 静内 korsi 子ども
+forceLiteral("tuitak", "tale", "NOUN");         // = tuytak 散文説話 (FRPAC Ishikari/Tokachi)
+forceLiteral("tuytak", "tale", "NOUN");
+forceLiteral("eattukonnaan", "how amazing", "ADV"); // 静内 eattukonna(~an) なんとまあ
+forceLiteral("eattukonna", "how amazing", "ADV");
+
 // ── Coverage pass 6 (context-verified batch 3).
 // Batchelor Bible:
 forceFrom("kampi", "kambi", "letter", "NOUN");   // DB gloss “bookkeeper” is wrong here
@@ -592,6 +608,62 @@ forceLiteral("enta", "Q", "PART");               // “hawe enta ka” emphatic 
 forceLiteral("acahcipo", "old woman", "NOUN");   // folktale grandmother
 forceLiteral("okore", "all", "ADV");             // “'okore campoho ne karahci”
 forceLiteral("monaa", "sit", "VI");              // “monaa=an wa inkar=an”
+
+// ── Coverage pass 7 (context-verified batch 4).
+// Sakhalin:
+forceLiteral("koh", "while", "SCONJ");         // kor with r→h: “niina koh kuru”
+forceLiteral("tah", "that", "PRON");           // “tah kii nukaraha” did that
+forceLiteral("hemata", "what", "PRON");        // “hemata yuukara hawehe”
+forceLiteral("omantene", "after a while", "SCONJ"); // “teh 'omantene 'orowa”
+forceLiteral("iineahsuy", "hey", "INTJ");      // “'iine'ahsuy yuhpo yuhpo”
+forceLiteral("hawoka", "say.PL", "VI");        // “sekor hawoka” (haweoka)
+forceLiteral("tewano", "from now", "ADV");     // “Tewano ecikki en=kohanke!”
+forceLiteral("iokunnuka", "good heavens", "INTJ"); // “Haypo! Iokunnuka!”
+// Batchelor Bible:
+forceLiteral("ande", "put", "VT");             // “tekehe ande-hi” laying hands
+forceLiteral("kashiobiuki", "save", "VT");     // kasi-opiwki “salvation”
+forceLiteral("iyohaichish", "psalm", "NOUN");  // “Iyohaichish 62” = Psalm 62
+forceLiteral("uirup", "kin", "NOUN");          // “uirup koro” have kindred
+forceLiteral("guranak", "person TOP", "NOUN"); // gur’anak = guru + anakne fused
+forceLiteral("eishokor", "believe", "VT");     // eishokoro variant
+
+// ── Coverage pass 8 (batch 5 — verified in ../ainu-dictionaries/rag_export,
+// mostly Batchelor's own dictionary entries).
+forceLiteral("koropare", "give", "VD");        // Batchelor: to give, bestow
+forceLiteral("epokba", "hate", "VT");          // Batchelor: to persecute, hate
+forceLiteral("paweteshu", "greet", "VT");      // Batchelor: to salute, greet
+forceLiteral("uweingara", "prophesy", "VT");   // Batchelor: to prophesy (-guru prophet)
+forceLiteral("koipishi", "judge", "VT");       // Batchelor: to judge, enquire into
+forceLiteral("pakihi", "time", "NOUN");        // Batchelor: パキヒ 時 (“the time is near”)
+forceLiteral("pokon", "as if", "PART");        // 静内 まるで～するみたいに
+forceLiteral("hemanda", "what", "PRON");       // hemanta voiced
+forceFrom("inkar", "ingara");                  // look (Batchelor echo vowel)
+forceLiteral("ingaran", "behold", "INTJ");     // ingar’an “Lord, behold”
+forceLiteral("rapoketa", "during", "ADV");     // rapok-ke-ta
+forceFrom("ni", "nii");                        // Sakhalin long vowel: “yan nii kaata”
+forceLiteral("yuhpo", "elder brother", "NOUN");// Sakhalin: “'iine'ahsuy yuhpo yuhpo”
+forceLiteral("e.", "yes", "INTJ");             // dialogue “B: E. Ku=merayke.”
+forceLiteral("yoannes", "John", "PROPN");      // III Yoannes = III John
+forceFrom("i=", "i");                          // detached 4.O clitic: “i-koyki”
+
+// ── Batchelor fused a-passive (owner decision: curated list only, no auto-rule
+// because a+VERB collides with real words — apa “door”, aokai “you”). Each
+// verified in context; gloss composes 4.A= + the stem's gloss at build time so
+// it stays in sync (anuye → 4.A=carve “written”, akore → 4.A=give “given”).
+for (const fused of ["akore", "anukara", "akara", "aesanniyo", "aisamka", "anunuke",
+  "anuye", "aokere", "auweomare", "aomare", "akire", "aeshik", "aashte", "aeramushinne"]) {
+  const stem = best.get(foldToken(fused.slice(1)));
+  if (!stem?.gloss_en) {
+    console.warn(`a-passive: stem for "${fused}" has no gloss — skipped`);
+    continue;
+  }
+  best.set(foldToken(fused), {
+    key_fold: foldToken(fused), key: fused, lemma: stem.lemma ?? null,
+    category: stem.category ?? null, morph_type: "a-passive",
+    pos_display: stem.pos_display ?? null, gloss_en: `4.A=${stem.gloss_en}`,
+    gloss_jp: null, source_id: `a=+${stem.source_id}`, priority: 100_000_000,
+  });
+}
 
 // Lexeme-bank fill-only fallback. The morpheme DB is the curated source of truth
 // and always wins; the lexeme bank (~15.8k dictionary lexemes) only fills folds
