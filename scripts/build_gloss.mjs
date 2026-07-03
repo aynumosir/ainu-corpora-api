@@ -599,6 +599,24 @@ forceLiteral("acahcipo", "old woman", "NOUN");   // folktale grandmother
 forceLiteral("okore", "all", "ADV");             // “'okore campoho ne karahci”
 forceLiteral("monaa", "sit", "VI");              // “monaa=an wa inkar=an”
 
+// ── Coverage pass 7 (context-verified batch 4).
+// Sakhalin:
+forceLiteral("koh", "while", "SCONJ");         // kor with r→h: “niina koh kuru”
+forceLiteral("tah", "that", "PRON");           // “tah kii nukaraha” did that
+forceLiteral("hemata", "what", "PRON");        // “hemata yuukara hawehe”
+forceLiteral("omantene", "after a while", "SCONJ"); // “teh 'omantene 'orowa”
+forceLiteral("iineahsuy", "hey", "INTJ");      // “'iine'ahsuy yuhpo yuhpo”
+forceLiteral("hawoka", "say.PL", "VI");        // “sekor hawoka” (haweoka)
+forceLiteral("tewano", "from now", "ADV");     // “Tewano ecikki en=kohanke!”
+forceLiteral("iokunnuka", "good heavens", "INTJ"); // “Haypo! Iokunnuka!”
+// Batchelor Bible:
+forceLiteral("ande", "put", "VT");             // “tekehe ande-hi” laying hands
+forceLiteral("kashiobiuki", "save", "VT");     // kasi-opiwki “salvation”
+forceLiteral("iyohaichish", "psalm", "NOUN");  // “Iyohaichish 62” = Psalm 62
+forceLiteral("uirup", "kin", "NOUN");          // “uirup koro” have kindred
+forceLiteral("guranak", "person TOP", "NOUN"); // gur’anak = guru + anakne fused
+forceLiteral("eishokor", "believe", "VT");     // eishokoro variant
+
 // ── Batchelor fused a-passive (owner decision: curated list only, no auto-rule
 // because a+VERB collides with real words — apa “door”, aokai “you”). Each
 // verified in context; gloss composes 4.A= + the stem's gloss at build time so
