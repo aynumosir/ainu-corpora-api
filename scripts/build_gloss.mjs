@@ -722,6 +722,23 @@ forceLiteral("tusunapanu", "(refrain)", "X");    // dict: sirkap 神謡の折り
 forceLiteral("tashum", "sickness", "NOUN");      // Batchelor
 forceLiteral("hitsuji", "sheep", "NOUN");        // Jap. loan in Bible
 
+// ── Coverage pass 12 (batch 9 — bulk dictionary sweep round 4).
+forceLiteral("yange", "offer up", "VT");         // Batchelor: give to a superior
+forceLiteral("poyyaunpe", "Poyyaunpe", "PROPN"); // yukar epic hero
+forceLiteral("yakob", "Jacob", "PROPN");
+forceLiteral("cisehe", "house", "NOUN");         // cise possessed
+forceLiteral("erampeutek", "not understand", "VI"); // Batchelor
+forceLiteral("rittunna", "(refrain)", "X");      // 107 occ / 2 sources, sakehe
+forceLiteral("heururu", "(refrain)", "X");       // 104 occ / 1 source, reduplicated sakehe
+forceLiteral("ahkapo", "younger brother", "NOUN"); // Sakhalin 弟、坊や (vocative in tales)
+forceLiteral("baptisma", "baptism", "NOUN");     // Batchelor coinage
+forceLiteral("chipachipa", "hope for", "VT");    // Batchelor: to long for
+forceLiteral("minzoku", "ethnic group", "NOUN"); // Jap. loan (modern prose)
+forceLiteral("wahka", "water", "NOUN");          // Sakhalin wakka
+forceLiteral("nibutani", "Nibutani", "PROPN");
+forceLiteral("rampoken", "mercy", "NOUN");       // Batchelor
+forceLiteral("ishu", "living", "VI");            // Batchelor: to be alive (“Ishu Kamui”)
+
 // ── Batchelor fused a-passive (owner decision: curated list only, no auto-rule
 // because a+VERB collides with real words — apa “door”, aokai “you”). Each
 // verified in context; gloss composes 4.A= + the stem's gloss at build time so
