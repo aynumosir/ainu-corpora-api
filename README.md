@@ -100,15 +100,18 @@ bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl          # local 
 TURSO_DATABASE_URL=… TURSO_AUTH_TOKEN=… bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl --turso
 ```
 
-Phase 4 adds two more inputs, both folded into the same loader:
+Phase 4+ adds morpheme DB inputs, all folded into the same loader:
 
 ```sh
 # 4. morphology (inflection) table from the sibling morpheme DB:
 bun scripts/build_morph.mjs        # → build/morph_forms.jsonl (singular↔plural, possessed)
+# 5. POS/gloss display lookup from the sibling morpheme DB:
+bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADVZ, content glosses)
 # load_tokens.mjs then:
 #   - backfills corpus_tokens.surface_fold (accent-folded key) at load time, and
-#   - loads build/morph_forms.jsonl into morph_forms (if present).
-# migrations/0002_fold_and_morph.sql is applied automatically by the loader.
+#   - loads build/morph_forms.jsonl into morph_forms (if present), and
+#   - loads build/morph_gloss.jsonl into morph_gloss (if present).
+# migrations/0002..0004 are applied automatically by the loader.
 ```
 
 ## Develop

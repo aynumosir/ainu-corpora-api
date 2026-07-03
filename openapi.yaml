@@ -58,12 +58,27 @@ components:
         i: { type: integer, description: index within the sentence }
         s: { type: string, description: surface (as printed) }
         n: { type: string, description: surface_norm }
-        p: { type: string, nullable: true, description: UPOS }
+        p: { type: string, nullable: true, description: "display POS (morpheme DB override, e.g. PERS, else raw UPOS)" }
+        u: { type: string, nullable: true, description: "raw tagger UPOS" }
         l: { type: string, nullable: true, description: lemma }
         x: { type: string, nullable: true, description: xpos (fine tag) }
         f: { type: string, nullable: true, description: morphological features }
+        g: { type: string, nullable: true, description: "short English gloss from ainu-morpheme-database" }
+        mc: { type: string, nullable: true, description: "morpheme DB category (pers, vt, n, sfx, ...)" }
         cl: { type: integer, description: 1 if clitic }
         node: { type: boolean, description: present+true on the node token }
+        alt:
+          type: array
+          description: >
+            Alternate homograph readings of this surface that lost the display slot,
+            most-likely first (e.g. pa displays NOUN "head" with alt PL, "mouth").
+            Omitted when the surface has no competing reading.
+          items:
+            type: object
+            properties:
+              p: { type: string, nullable: true, description: display POS of the alternate reading }
+              g: { type: string, description: gloss of the alternate reading }
+              mc: { type: string, nullable: true, description: morpheme DB category of the alternate reading }
     KwicAnnotatedLine:
       type: object
       properties:

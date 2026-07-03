@@ -20,9 +20,11 @@ const TOK_FILE = tokArg ? tokArg.slice("--tokens=".length) : "../build/tokens.js
 const MIG = new URL("../migrations/0001_tokens.sql", import.meta.url);
 const MIG2 = new URL("../migrations/0002_fold_and_morph.sql", import.meta.url);
 const MIG3 = new URL("../migrations/0003_dialect_levels.sql", import.meta.url);
+const MIG4 = new URL("../migrations/0004_morph_gloss.sql", import.meta.url);
 const SENT = new URL("../build/sentences.jsonl", import.meta.url);
 const TOK = new URL(TOK_FILE, import.meta.url);
 const MORPH = new URL("../build/morph_forms.jsonl", import.meta.url);
+const GLOSS = new URL("../build/morph_gloss.jsonl", import.meta.url);
 
 function* ddlStatements(sql) {
   // Strip line comments FIRST so a stray ';' inside a comment can't split a statement.
@@ -83,6 +85,10 @@ const MORPH_COLS = ["lemma", "lemma_fold", "surface", "surface_fold", "relation"
 const morphRow = (r) => [r.lemma, r.lemma_fold, r.surface, r.surface_fold, r.relation,
   r.number_locus ?? null, r.form_length ?? null, r.source ?? null, r.confidence ?? null, r.rule_id ?? null];
 
+const GLOSS_COLS = ["key_fold", "key", "lemma", "category", "morph_type", "pos_display", "gloss_en", "gloss_jp", "source_id", "priority", "alternates"];
+const glossRow = (r) => [r.key_fold, r.key, r.lemma ?? null, r.category ?? null, r.morph_type ?? null,
+  r.pos_display ?? null, r.gloss_en ?? null, r.gloss_jp ?? null, r.source_id ?? null, r.priority ?? 0, r.alternates ?? null];
+
 const BULK_INDEXES = [
   "idx_tokens_surface_norm",
   "idx_tokens_lemma",
@@ -94,6 +100,8 @@ const BULK_INDEXES = [
   "idx_morph_lemma_fold",
   "idx_morph_surface_fold",
   "idx_morph_relation",
+  "idx_morph_gloss_key_fold",
+  "idx_morph_gloss_category",
 ];
 
 async function dropBulkIndexes(db) {
@@ -112,6 +120,8 @@ async function createBulkIndexes(db) {
     "CREATE INDEX IF NOT EXISTS idx_morph_lemma_fold ON morph_forms (lemma_fold)",
     "CREATE INDEX IF NOT EXISTS idx_morph_surface_fold ON morph_forms (surface_fold)",
     "CREATE INDEX IF NOT EXISTS idx_morph_relation ON morph_forms (relation)",
+    "CREATE INDEX IF NOT EXISTS idx_morph_gloss_key_fold ON morph_gloss (key_fold)",
+    "CREATE INDEX IF NOT EXISTS idx_morph_gloss_category ON morph_gloss (category)",
   ];
   for (const s of stmts) await db.execute(s);
 }
@@ -128,6 +138,9 @@ async function loadTurso() {
     try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
   for (const s of ddlStatements(readFileSync(MIG3, "utf8"))) {
+    try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
+  }
+  for (const s of ddlStatements(readFileSync(MIG4, "utf8"))) {
     try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
 
@@ -162,6 +175,14 @@ async function loadTurso() {
   } else {
     console.log("(no build/morph_forms.jsonl — run scripts/build_morph.mjs first; skipping)");
   }
+  const gloss = readJsonlIfExists(GLOSS);
+  if (gloss) {
+    console.log("loading morph_gloss…");
+    await db.execute("DELETE FROM morph_gloss");
+    await insertBatched("morph_gloss", GLOSS_COLS, gloss.map(glossRow), 200, 20);
+  } else {
+    console.log("(no build/morph_gloss.jsonl — run scripts/build_gloss.mjs first; skipping)");
+  }
 
   console.log("recreating indexes…");
   await createBulkIndexes(db);
@@ -182,6 +203,9 @@ async function loadLocal() {
   for (const s of ddlStatements(readFileSync(MIG3, "utf8"))) {
     try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
+  for (const s of ddlStatements(readFileSync(MIG4, "utf8"))) {
+    try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
+  }
   db.run("DELETE FROM corpus_tokens"); db.run("DELETE FROM sentences");
 
   const insert = (table, cols, rows) => {
@@ -199,6 +223,14 @@ async function loadLocal() {
     console.log(`morph_forms: ${morph.length} rows loaded`);
   } else {
     console.log("(no build/morph_forms.jsonl — run scripts/build_morph.mjs first; skipping)");
+  }
+  const gloss = readJsonlIfExists(GLOSS);
+  if (gloss) {
+    db.run("DELETE FROM morph_gloss");
+    insert("morph_gloss", GLOSS_COLS, gloss.map(glossRow));
+    console.log(`morph_gloss: ${gloss.length} rows loaded`);
+  } else {
+    console.log("(no build/morph_gloss.jsonl — run scripts/build_gloss.mjs first; skipping)");
   }
 
   const nS = db.query("SELECT count(*) c FROM sentences").get().c;
