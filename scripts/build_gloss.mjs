@@ -120,7 +120,7 @@ function cleanGloss(g) {
   //   "to take charge of ..., to look after ..." → "take charge"
   //   "a person who came from ..." → "person"
   s = t.split(/[;,]/)[0].trim();           // keep first concise sense
-  s = s.replace(/^(transitive|intransitive)\s+to\s+/i, "");
+  s = s.replace(/^(transitive|intransitive|ditransitive)\s+to\s+/i, "");
   s = s.replace(/^to\s+/i, "");
   s = s.replace(/^be\s+/i, "");
   s = s.replace(/^(?:the|an?)\s+/i, "");
@@ -575,6 +575,12 @@ forceLiteral("u", "FILLER", "INTJ");          // yukar metric vocable: “V u po
 forceLiteral("v", "(verse)", "X");            // yukar line marker
 forceLiteral("b", "(speaker)", "X");          // dialogue speaker label “B:”
 
+// ── Owner-decided glosses (mkpoli, 2026-07-04):
+forceLiteral("konno", "while", "SCONJ");        // yukar kor-no temporal converb
+forceLiteral("sirkunpato", "(refrain)", "X");   // kamuy-yukar sakehe
+forceLiteral("heino", "(refrain)", "X");        // kamuy-yukar sakehe
+forceLiteral("aokai", "you", "PRON");           // Batchelor a-okai 2nd person (NOT a+okai)
+
 // ── Coverage pass 6 (context-verified batch 3).
 // Batchelor Bible:
 forceFrom("kampi", "kambi", "letter", "NOUN");   // DB gloss “bookkeeper” is wrong here
@@ -592,6 +598,25 @@ forceLiteral("enta", "Q", "PART");               // “hawe enta ka” emphatic 
 forceLiteral("acahcipo", "old woman", "NOUN");   // folktale grandmother
 forceLiteral("okore", "all", "ADV");             // “'okore campoho ne karahci”
 forceLiteral("monaa", "sit", "VI");              // “monaa=an wa inkar=an”
+
+// ── Batchelor fused a-passive (owner decision: curated list only, no auto-rule
+// because a+VERB collides with real words — apa “door”, aokai “you”). Each
+// verified in context; gloss composes 4.A= + the stem's gloss at build time so
+// it stays in sync (anuye → 4.A=carve “written”, akore → 4.A=give “given”).
+for (const fused of ["akore", "anukara", "akara", "aesanniyo", "aisamka", "anunuke",
+  "anuye", "aokere", "auweomare", "aomare", "akire", "aeshik", "aashte", "aeramushinne"]) {
+  const stem = best.get(foldToken(fused.slice(1)));
+  if (!stem?.gloss_en) {
+    console.warn(`a-passive: stem for "${fused}" has no gloss — skipped`);
+    continue;
+  }
+  best.set(foldToken(fused), {
+    key_fold: foldToken(fused), key: fused, lemma: stem.lemma ?? null,
+    category: stem.category ?? null, morph_type: "a-passive",
+    pos_display: stem.pos_display ?? null, gloss_en: `4.A=${stem.gloss_en}`,
+    gloss_jp: null, source_id: `a=+${stem.source_id}`, priority: 100_000_000,
+  });
+}
 
 // Lexeme-bank fill-only fallback. The morpheme DB is the curated source of truth
 // and always wins; the lexeme bank (~15.8k dictionary lexemes) only fills folds
