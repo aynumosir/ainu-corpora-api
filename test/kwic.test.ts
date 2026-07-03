@@ -137,6 +137,35 @@ test("token without alternates has no alt field", async () => {
   expect(out[0].node[0].alt).toBeUndefined();
 });
 
+test("KWIC degrades gracefully when the morph_gloss join is unavailable", async () => {
+  // Older DB without the morph_gloss table / alternates column: the gloss join
+  // throws, the loader falls back to a plain corpus_tokens query, KWIC still works.
+  const node = { sentence_id: "s1", idx: 0, char_start: 0, char_end: 5,
+    text: "rayke", translation: null, dialect: null, author: null, uri: null };
+  const fallbackTok = { sentence_id: "s1", idx: 0, surface: "rayke", surface_norm: "rayke",
+    upos: "VERB", lemma: null, xpos: null, feats_json: null, is_clitic: 0 };
+  const db = {
+    prepare(sql: string) {
+      let args: unknown[] = [];
+      const stmt = {
+        bind(...a: unknown[]) { args = a; return stmt; },
+        async all<T>() {
+          if (sql.includes("morph_gloss")) throw new Error("no such column: alternates");
+          const rows = sql.includes("FROM corpus_tokens WHERE sentence_id IN") ? [fallbackTok] : [node];
+          return { results: rows as T[] };
+        },
+        async first<T>() { return null as T | null; },
+      };
+      return stmt;
+    },
+  } as unknown as D1Database;
+  const out = await kwic(db, { q: "rayke", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  expect(out[0].node[0].s).toBe("rayke");
+  expect(out[0].node[0].p).toBe("VERB"); // falls back to raw UPOS
+  expect(out[0].node[0].g ?? null).toBeNull(); // gloss absent, but no crash
+  expect(out[0].node[0].alt).toBeUndefined();
+});
+
 test("standalone glottal-stop markers are skipped in KWIC context windows", async () => {
   // Reproduces the Murasaki Sakhalin case: "' ampa teh ' ahun ' isam ' isam '"
   // where bare "'" tokens are glottal-stop markers, not words. They must NOT

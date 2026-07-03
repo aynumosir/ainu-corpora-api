@@ -298,8 +298,9 @@ function recordFromEntry(m, key, pri = priority(m, key)) {
 const best = new Map();
 // All glossed candidate readings seen per fold, so homographs (pa = head / PL /
 // find, kane = somewhat / metal) can expose the losing readings as `alternates`
-// alongside the displayed winner. Populated from the morpheme-DB pass only —
-// the curated/generated/lexeme fallbacks are single-reading by construction.
+// alongside the displayed winner. Fed by the morpheme-DB pass (free readings +
+// bound-affix readings) and by the lexeme-bank pass (each dictionary sense); the
+// curated forceFrom/forceLiteral overrides are single-reading and skip it.
 const candidates = new Map();
 function addCandidate(rec) {
   if (!rec || !rec.gloss_en) return;
@@ -405,11 +406,20 @@ for (const f of formRows) {
 }
 let generatedAdded = 0;
 for (const rec of generatedBySurface.values()) {
-  // Fill only missing direct entries. If the direct entry exists but lacks a
-  // gloss/POS, allow the generated form to improve it.
+  // Fill only missing fields. If the direct entry exists but lacks a gloss/POS,
+  // borrow just the absent field from the generated form — never replace the
+  // whole record (that would drop a good gloss to gain a POS, or vice versa).
   const prev = best.get(rec.key_fold);
-  if (!prev || (!prev.gloss_en && rec.gloss_en) || (!prev.pos_display && rec.pos_display)) {
+  if (!prev) {
     best.set(rec.key_fold, rec);
+    generatedAdded++;
+  } else if ((!prev.gloss_en && rec.gloss_en) || (!prev.pos_display && rec.pos_display)) {
+    best.set(rec.key_fold, {
+      ...prev,
+      gloss_en: prev.gloss_en ?? rec.gloss_en,
+      gloss_jp: prev.gloss_jp ?? rec.gloss_jp,
+      pos_display: prev.pos_display ?? rec.pos_display,
+    });
     generatedAdded++;
   }
 }
@@ -419,7 +429,12 @@ for (const rec of generatedBySurface.values()) {
 // or a very frequent source orthography not yet present as DB allomorph.
 function forceFrom(sourceId, key, gloss, pos = undefined) {
   const m = rows.find((r) => r.id === sourceId);
-  if (!m) return;
+  if (!m) {
+    // These encode specific, previously-diagnosed fixes; a silent no-op on a
+    // renamed/removed DB id would let the regression reappear undetected.
+    console.warn(`forceFrom: source id "${sourceId}" not found — override "${key}" skipped`);
+    return;
+  }
   const keyFold = foldToken(key);
   const displayGloss = gloss ?? cleanGloss(first(m.glosses_en));
   best.set(keyFold, {
@@ -550,7 +565,7 @@ if (existsSync(LEX)) {
   }
 }
 
-// Attach up to 3 alternate homograph readings to each displayed winner. An
+// Attach up to ALT_MAX alternate homograph readings to each displayed winner. An
 // alternate is a distinct attested reading (different POS *or* gloss) that lost
 // the display slot — e.g. pa shows NOUN “head” with alt PL; kane shows “somewhat”
 // with alt NOUN “metal”. Consumers can surface these without another lookup.
