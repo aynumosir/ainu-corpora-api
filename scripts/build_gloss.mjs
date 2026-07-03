@@ -498,6 +498,101 @@ forceFrom("kor", "koro");        // kor “have” with echo vowel
 forceFrom("korka", "koroka");    // korka “but”
 forceFrom("opitta", "obitta");   // opitta “all” (p→b voicing)
 
+// ── Coverage pass 1: normalize personal-clitic display glosses to Leipzig
+// labels so composed tokens below read `4.A=see`, not `someone see`.
+forceLiteral("an=", "4.A=", "PERS");        // a= variant after consonant stems
+forceLiteral("k=", "1SG.A=", "PERS");       // reduced ku=
+forceLiteral("c=", "1PL.EXC.A=", "PERS");   // reduced ci=
+forceLiteral("un=", "1PL.EXC.O=", "PERS");
+
+// ── Coverage pass 2: Batchelor Bible orthography (voiced stops, ch/sh, echo
+// vowels) mapped onto attested morpheme-DB lemmas. Verified against context:
+// the Bible corpus never uses e.g. shui as the verb “shake”.
+forceFrom("nukar", "nukara");    // see
+forceFrom("pirka", "pirika");    // be good
+forceFrom("cise", "chisei");     // house
+forceFrom("kanto", "kando");     // sky
+forceFrom("arki", "araki");      // come.PL
+forceFrom("irenka", "irenga");   // will/law
+forceFrom("irwak", "iriwak");    // siblings
+forceFrom("kewtum", "keutum");   // spirit/mind
+forceFrom("utarpa", "utarapa");  // chief
+forceFrom("etok", "etoko");      // before/front (possessed)
+forceFrom("mosma", "moshima");   // other
+forceFrom("hawean", "hawan", "say", "VI");   // haw'an
+forceFrom("inanpe", "inambe", "which one", "PRON");
+forceLiteral("shui", "again", "ADV");        // Batchelor suy (adv; DB has only the verb)
+forceLiteral("okaibe", "things", "NOUN");    // okay pe “existing things”
+forceLiteral("ambe", "thing", "NOUN");       // an pe “the thing that is” (NOT anpe “truth”)
+forceLiteral("reihei", "name", "NOUN");      // Batchelor rei(hei)
+forceLiteral("chikoro", "our", "PERS");      // ci= koro “our (Father)”
+forceLiteral("yesu", "Jesus", "PROPN");
+forceLiteral("kiristo", "Christ", "PROPN");
+forceLiteral("ehoba", "Jehovah", "PROPN");
+
+// ── Coverage pass 3: Sakhalin folktale (Asai Take) orthography + converbs and
+// the standard folktale protagonists. Long vowels are written double; -h final.
+forceLiteral("teh", "and", "SCONJ");         // Sakhalin converb (= wa)
+forceLiteral("nah", "QUOT", "PART");         // Sakhalin quotative/manner (= sekor)
+forceLiteral("neeteh", "and then", "SCONJ"); // nee + teh
+forceLiteral("nean", "that", "ADN");         // ne'an “that (aforementioned)”
+forceLiteral("anoka", "I/we", "PRON");       // Sakhalin independent pronoun
+forceLiteral("horokewpo", "young wolf", "NOUN");   // folktale hero
+forceLiteral("monimahpo", "young woman", "NOUN");  // folktale heroine
+forceLiteral("shomoki", "not do", "V");      // somo ki
+forceFrom("ye", "yee");                      // say (long vowel)
+forceFrom("ne", "nee");                      // COP (long vowel)
+forceFrom("ki", "kii");                      // do (long vowel)
+
+// ── Coverage pass 4: pan-dialect converbs missing from the morpheme DB.
+forceLiteral("ike", "and then", "PART");     // (h)ike converb: oka=an ike …
+forceLiteral("yayne", "until finally", "SCONJ");
+forceLiteral("oshiketa", "inside", "NOUN");  // Batchelor o-sike-ta “in the inside of”
+
+// ── Coverage pass 5 (context-verified batch 2).
+// Batchelor Bible voicing/echo-vowel spellings backed by DB lemmas:
+forceFrom("ipe", "ibe");            // eat: “tope ibe” drink milk
+forceFrom("sanke", "sange");        // bring down: “itak sange”
+forceFrom("koykar", "koikara");     // imitate: “wenbe iteki koikara”
+forceFrom("kar", "kara");           // make (echo vowel)
+forceFrom("kor", "kora");           // have/'s: “Kamui kora kenru”
+forceFrom("iteki", "itekke", "PROH", "ADV");  // “itekke irara yan”
+forceLiteral("yaikota", "oneself", "ADV");    // “shinuma yaikota” he himself
+forceLiteral("oupeka", "upright", "ADV");     // “oupeka an itak” just words
+forceLiteral("nekon", "how", "ADV");          // “nekon ne hawe tapan”
+forceLiteral("newa", "and", "CCONJ");         // NP-coordinating “A newa B”
+forceLiteral("ikip", "deed", "NOUN");         // iki + p “that which one does”
+// Sakhalin (Asai Take) forms:
+forceLiteral("neya", "that", "ADN");          // “neya monimahpo” the aforesaid
+forceLiteral("utah", "people", "NOUN");       // utar with r→h
+forceLiteral("kuski", "FUT", "AUX");          // kusu iki contraction: “sat kuski”
+forceLiteral("kun", "should", "PART");        // kuni reduced: “an-ki kun ki kusu”
+forceLiteral("manuyke", "and then", "PART");  // manu + ike hearsay converb
+forceLiteral("payeka", "go around", "V");     // paye + ka
+// Dialogue/edition artifacts, verified in context:
+forceLiteral("aa", "ah", "INTJ");             // “B: aa, hawe ne ciki …”
+forceLiteral("u", "FILLER", "INTJ");          // yukar metric vocable: “V u poknamosir”
+forceLiteral("v", "(verse)", "X");            // yukar line marker
+forceLiteral("b", "(speaker)", "X");          // dialogue speaker label “B:”
+
+// ── Coverage pass 6 (context-verified batch 3).
+// Batchelor Bible:
+forceFrom("kampi", "kambi", "letter", "NOUN");   // DB gloss “bookkeeper” is wrong here
+forceFrom("puri", "buri");                       // behavior/custom
+forceFrom("kor", "goro");                        // “Ku goro poho” my sons
+forceLiteral("katpak", "sin", "NOUN");           // Batchelor coinage: “a=kor katpak e=tusare”
+forceLiteral("eishokoro", "believe", "VT");      // “Eishokoro okere utara” those who believed
+forceLiteral("shiwentep", "widow", "NOUN");
+forceLiteral("ushike", "place", "NOUN");         // us-i-ke: “ashkanne ushike” clean place
+forceLiteral("tumugeta", "among", "ADV");        // tum-ke-ta: “nei utara tumugeta”
+forceLiteral("yudea", "Judea", "PROPN");
+// Yukar/classic:
+forceLiteral("enta", "Q", "PART");               // “hawe enta ka” emphatic interrogative
+// Sakhalin:
+forceLiteral("acahcipo", "old woman", "NOUN");   // folktale grandmother
+forceLiteral("okore", "all", "ADV");             // “'okore campoho ne karahci”
+forceLiteral("monaa", "sit", "VI");              // “monaa=an wa inkar=an”
+
 // Lexeme-bank fill-only fallback. The morpheme DB is the curated source of truth
 // and always wins; the lexeme bank (~15.8k dictionary lexemes) only fills folds
 // the morpheme DB left without a gloss — content words like folktale vocabulary.
@@ -565,6 +660,92 @@ if (existsSync(LEX)) {
   }
 }
 
+// Corpus-driven fill for token shapes the DB can never list directly:
+//   a) clitic-composed tokens (an=nukar, k=arpa, itak=an) — compose the gloss
+//      from the personal clitic + the stem: 4.A= + see → “4.A=see”.
+//   b) underscore variants (h_ine, w_a, an_=se) — the corpus marks a latent
+//      segment with “_”; the plain form carries the same sense.
+// Reads DISTINCT surface folds from build/corpus.db (skipped when absent, e.g.
+// in CI). Fill-only: never touches folds that already have a gloss.
+const CORPUS_DB = new URL("../build/corpus.db", import.meta.url).pathname;
+let composedAdded = 0, underscoreAdded = 0;
+if (existsSync(CORPUS_DB)) {
+  const { Database } = await import("bun:sqlite");
+  const cdb = new Database(CORPUS_DB, { readonly: true });
+  const folds = cdb
+    .query("SELECT DISTINCT surface_fold f FROM corpus_tokens WHERE surface_fold GLOB '*[a-z]*'")
+    .all()
+    .map((r) => r.f);
+  cdb.close();
+  const isPers = (r) => r && (r.category === "pers" || r.morph_type === "clitic" || r.pos_display === "PERS");
+  for (const fold of folds) {
+    const prev = best.get(fold);
+    if (prev?.gloss_en) continue;
+    const plain = fold.replace(/_/g, "");
+
+    // b) pure underscore variant of a known word.
+    if (plain !== fold && !plain.includes("=")) {
+      const base = best.get(plain);
+      if (base?.gloss_en) {
+        best.set(fold, { ...base, key_fold: fold, key: fold, morph_type: "underscore", source_id: `${base.source_id}:underscore`, priority: 0, alternates: null });
+        underscoreAdded++;
+      }
+      continue;
+    }
+
+    // c) Sakhalin plural -hci / -ahci on a known verb: okayahci → exist.PL,
+    //    karahci → make.PL. Verb stems only, so noun homographs never match.
+    if (!plain.includes("=") && plain.length > 4 && plain.endsWith("hci")) {
+      const VPOS = new Set(["VI", "VT", "VD", "VC", "V", "AUX"]);
+      for (const stemFold of [plain.slice(0, -3), plain.slice(0, -4)]) {
+        const base = best.get(stemFold);
+        // Verb stems only — except okay “exist(.PL)”, which the DB tags PRON.
+        if (!base?.gloss_en || !(VPOS.has(base.pos_display ?? "") || /^exist/.test(base.gloss_en))) continue;
+        const g = base.gloss_en.endsWith(".PL") ? base.gloss_en : base.gloss_en + ".PL";
+        best.set(fold, { ...base, key_fold: fold, key: fold, gloss_en: g, morph_type: "hci-plural", source_id: `${base.source_id}:hci`, priority: 0, alternates: null });
+        composedAdded++;
+        break;
+      }
+      if (best.get(fold)?.gloss_en) continue;
+    }
+
+    // a) single personal clitic + stem (either order), after underscore strip.
+    if (plain.split("=").length !== 2) continue;
+    const [p0, p1] = plain.split("=");
+    if (!p0 || !p1) continue;
+    let clitic = best.get(`${p0}=`), stem = best.get(p1), composedGloss = null, stemRec = null;
+    if (isPers(clitic) && clitic.gloss_en && stem?.gloss_en) {
+      const cg = clitic.gloss_en.endsWith("=") ? clitic.gloss_en : clitic.gloss_en + "=";
+      composedGloss = cg + stem.gloss_en;
+      stemRec = stem;
+    } else {
+      stem = best.get(p0);
+      const enc = best.get(`=${p1}`);
+      if (stem?.gloss_en && isPers(enc) && enc.gloss_en) {
+        const eg = enc.gloss_en.startsWith("=") ? enc.gloss_en : "=" + enc.gloss_en;
+        composedGloss = stem.gloss_en + eg;
+        stemRec = stem;
+        clitic = enc;
+      }
+    }
+    if (!composedGloss) continue;
+    best.set(fold, {
+      key_fold: fold,
+      key: fold,
+      lemma: stemRec.lemma ?? null,
+      category: stemRec.category ?? null,
+      morph_type: "composed",
+      pos_display: stemRec.pos_display ?? null,
+      gloss_en: composedGloss,
+      gloss_jp: null,
+      source_id: `${clitic.source_id}+${stemRec.source_id}`,
+      priority: 0,
+      alternates: null,
+    });
+    composedAdded++;
+  }
+}
+
 // Attach up to ALT_MAX alternate homograph readings to each displayed winner. An
 // alternate is a distinct attested reading (different POS *or* gloss) that lost
 // the display slot — e.g. pa shows NOUN “head” with alt PL; kane shows “somewhat”
@@ -596,6 +777,7 @@ writeFileSync(OUT, out.map((r) => JSON.stringify(r)).join("\n") + "\n");
 console.log(`morph_gloss: ${out.length} rows -> ${OUT.pathname}`);
 console.log(`generated-form fallbacks: ${generatedAdded} rows from ${FORMS.pathname}`);
 console.log(`lexeme-bank fill-only fallbacks: ${lexemeAdded} rows from ${LEX.pathname}`);
+console.log(`corpus-driven fills: ${composedAdded} clitic-composed, ${underscoreAdded} underscore variants`);
 for (const k of ["a=", "=an", "ku=", "p", "pe", "no", "kor", "rayke", "ronnu", "okere", "okére", "macihi", "te"]) {
   const r = best.get(foldToken(k));
   console.log(`  ${k}: ${r?.pos_display ?? "—"} ${r?.gloss_en ?? "—"} (${r?.source_id ?? "—"})`);
