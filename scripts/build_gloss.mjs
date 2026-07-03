@@ -580,6 +580,16 @@ forceLiteral("konno", "while", "SCONJ");        // yukar kor-no temporal converb
 forceLiteral("sirkunpato", "(refrain)", "X");   // kamuy-yukar sakehe
 forceLiteral("heino", "(refrain)", "X");        // kamuy-yukar sakehe
 forceLiteral("aokai", "you", "PRON");           // Batchelor a-okai 2nd person (NOT a+okai)
+// Owner batch 2 (2026-07-04, verified in ../ainu-dictionaries + corpus):
+forceLiteral("eino", "(refrain)", "X");         // heino family — repeats through a performance
+forceLiteral("hemnoye", "(refrain)", "X");      // 448 occ / 2 sources, line-initial sakehe
+forceLiteral("nope", "(refrain)", "X");         // 208 occ / 1 source, line-initial sakehe
+forceLiteral("ounno", "from then on", "ADV");   // 静内【後副】～からずっと; FF-Ainu それから
+forceLiteral("korsi", "child", "NOUN");         // 静内 korsi 子ども
+forceLiteral("tuitak", "tale", "NOUN");         // = tuytak 散文説話 (FRPAC Ishikari/Tokachi)
+forceLiteral("tuytak", "tale", "NOUN");
+forceLiteral("eattukonnaan", "how amazing", "ADV"); // 静内 eattukonna(~an) なんとまあ
+forceLiteral("eattukonna", "how amazing", "ADV");
 
 // ── Coverage pass 6 (context-verified batch 3).
 // Batchelor Bible:
@@ -616,6 +626,25 @@ forceLiteral("iyohaichish", "psalm", "NOUN");  // “Iyohaichish 62” = Psalm 6
 forceLiteral("uirup", "kin", "NOUN");          // “uirup koro” have kindred
 forceLiteral("guranak", "person TOP", "NOUN"); // gur’anak = guru + anakne fused
 forceLiteral("eishokor", "believe", "VT");     // eishokoro variant
+
+// ── Coverage pass 8 (batch 5 — verified in ../ainu-dictionaries/rag_export,
+// mostly Batchelor's own dictionary entries).
+forceLiteral("koropare", "give", "VD");        // Batchelor: to give, bestow
+forceLiteral("epokba", "hate", "VT");          // Batchelor: to persecute, hate
+forceLiteral("paweteshu", "greet", "VT");      // Batchelor: to salute, greet
+forceLiteral("uweingara", "prophesy", "VT");   // Batchelor: to prophesy (-guru prophet)
+forceLiteral("koipishi", "judge", "VT");       // Batchelor: to judge, enquire into
+forceLiteral("pakihi", "time", "NOUN");        // Batchelor: パキヒ 時 (“the time is near”)
+forceLiteral("pokon", "as if", "PART");        // 静内 まるで～するみたいに
+forceLiteral("hemanda", "what", "PRON");       // hemanta voiced
+forceFrom("inkar", "ingara");                  // look (Batchelor echo vowel)
+forceLiteral("ingaran", "behold", "INTJ");     // ingar’an “Lord, behold”
+forceLiteral("rapoketa", "during", "ADV");     // rapok-ke-ta
+forceFrom("ni", "nii");                        // Sakhalin long vowel: “yan nii kaata”
+forceLiteral("yuhpo", "elder brother", "NOUN");// Sakhalin: “'iine'ahsuy yuhpo yuhpo”
+forceLiteral("e.", "yes", "INTJ");             // dialogue “B: E. Ku=merayke.”
+forceLiteral("yoannes", "John", "PROPN");      // III Yoannes = III John
+forceFrom("i=", "i");                          // detached 4.O clitic: “i-koyki”
 
 // ── Batchelor fused a-passive (owner decision: curated list only, no auto-rule
 // because a+VERB collides with real words — apa “door”, aokai “you”). Each
