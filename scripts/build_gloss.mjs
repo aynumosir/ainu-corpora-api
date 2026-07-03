@@ -833,6 +833,8 @@ if (existsSync(LEX)) {
 // Reads DISTINCT surface folds from build/corpus.db (skipped when absent, e.g.
 // in CI). Fill-only: never touches folds that already have a gloss.
 const CORPUS_DB = new URL("../build/corpus.db", import.meta.url).pathname;
+// Verified traps the orthographic-variant rule must never map (see rule d).
+const ORTHOVAR_BLOCK = new Set(["taata", "karape", "payekay"]);
 let composedAdded = 0, underscoreAdded = 0;
 if (existsSync(CORPUS_DB)) {
   const { Database } = await import("bun:sqlite");
@@ -872,6 +874,39 @@ if (existsSync(CORPUS_DB)) {
         break;
       }
       if (best.get(fold)?.gloss_en) continue;
+    }
+
+    // d) orthographic variant of a known word: Batchelor sh/ch digraphs and
+    //    voiced stops (raige→raike, hembara→hempara), doubled long vowels
+    //    (pekere→peker via degemination, pooho→poho), echo vowels
+    //    (hotuyekara→hotuyekar), ay/ai. Measured precision: essentially perfect
+    //    for folds ≥5 chars; SHORT folds are where the traps live (eh is
+    //    Sakhalin ek “come”, not er; homo is somo; taata is taa-ta “there”) so
+    //    they are excluded wholesale, along with a blocklist of verified traps.
+    //    Deliberately NO Sakhalin h-final rule here: h can reflect k/r/p/t and
+    //    needs per-word context (sineh/utah/teh/nah/koh are curated above).
+    if (!plain.includes("=") && plain.length >= 5 && !ORTHOVAR_BLOCK.has(plain)) {
+      const cands = new Set();
+      const add = (x) => { if (x && x !== plain && x.length >= 2) cands.add(x); };
+      const deDigraph = plain.replace(/sh/g, "s").replace(/ch/g, "c");
+      const deVoice = (x) => x.replace(/b/g, "p").replace(/d/g, "t").replace(/g/g, "k");
+      const deGem = (x) => x.replace(/(.)\1+/g, "$1");
+      for (const base of [plain, deDigraph]) {
+        add(base); add(deVoice(base)); add(deGem(base)); add(deVoice(deGem(base)));
+        if (/[ptkmnsr][aiueo]$/.test(base)) { add(base.slice(0, -1)); add(deVoice(deGem(base)).replace(/[aiueo]$/, "")); }
+        add(base.replace(/ay/g, "ai")); add(base.replace(/ai/g, "ay"));
+      }
+      cands.delete(plain);
+      let applied = false;
+      for (const v of cands) {
+        const base = best.get(v);
+        if (!base?.gloss_en) continue;
+        best.set(fold, { ...base, key_fold: fold, key: fold, morph_type: "orthovar", source_id: `${base.source_id}:orthovar`, priority: 0, alternates: null });
+        underscoreAdded++; // counted with the variant fills
+        applied = true;
+        break;
+      }
+      if (applied) continue;
     }
 
     // a) single personal clitic + stem (either order), after underscore strip.
