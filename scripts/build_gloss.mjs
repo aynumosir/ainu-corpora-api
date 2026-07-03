@@ -646,6 +646,82 @@ forceLiteral("e.", "yes", "INTJ");             // dialogue “B: E. Ku=merayke.�
 forceLiteral("yoannes", "John", "PROPN");      // III Yoannes = III John
 forceFrom("i=", "i");                          // detached 4.O clitic: “i-koyki”
 
+// ── Coverage pass 9 (batch 6 — bulk dictionary sweep, each hit confirmed in
+// ../ainu-dictionaries/rag_export/all.txt: Batchelor 1905/1938, FRPAC Shizunai/
+// Samani, Tomita; Sakhalin items in Murasaki-derived wordlists).
+forceLiteral("ociwe", "throw away", "VT");     // 静内/様似 （～を）投げる、捨てる
+forceLiteral("kampisos", "book", "NOUN");      // kampi-sos
+forceLiteral("reekoh", "very", "ADV");         // Sakhalin たいへん、とても
+forceLiteral("ushiketa", "in the place", "ADV"); // ushike + ta
+forceLiteral("kotchaketa", "in front of", "ADP"); // Batchelor post. before
+forceLiteral("toi", "very", "ADV");            // Batchelor adj. Very (“toi rai wen rai”)
+forceLiteral("chikoikip", "animal", "NOUN");   // Batchelor: animals of any kind
+forceLiteral("henne", "NEG", "ADV");           // Batchelor adv. No; 静内 ～しない
+forceLiteral("niina", "gather firewood", "VI");// Sakhalin 薪をとる (= nina)
+forceLiteral("emkota", "quickly", "ADV");      // Batchelor: soon, very quickly
+forceLiteral("otusashuishiri", "forever", "ADV"); // Batchelor: for ever
+forceFrom("mokor", "mokoro");                  // sleep (echo vowel)
+forceLiteral("wenbe", "bad thing", "NOUN");    // wenpe voiced
+forceLiteral("iramkitta", "astonished", "INTJ"); // 静内 驚いた【間投】
+forceLiteral("ikashima", "more than", "ADV");  // Batchelor: over, plus
+forceLiteral("samake", "beside", "ADV");       // Batchelor: by the side of
+forceLiteral("eashkai", "can", "VI");          // Batchelor: to be able to do
+forceLiteral("yaishieiwangere", "serve", "VT");// yai-si-eiwange-re “make oneself be used”
+// Bible proper names:
+forceLiteral("petros", "Peter", "PROPN");
+forceLiteral("pauros", "Paul", "PROPN");
+forceLiteral("dabid", "David", "PROPN");
+forceLiteral("yerusarem", "Jerusalem", "PROPN");
+
+// ── Coverage pass 10 (batch 7 — bulk dictionary sweep round 2).
+forceLiteral("netobake", "body", "NOUN");        // netopake 体
+forceLiteral("esta", "EMPH", "PART");            // 静内/様似 [強調] ～こそ
+forceLiteral("oshiroma", "dwell", "VI");         // Batchelor: to dwell at a place
+forceLiteral("haratonna", "(refrain)", "X");     // 144 occ / 1 source, sakehe
+forceLiteral("pirikap", "good thing", "NOUN");   // Batchelor
+forceLiteral("shi", "truly", "ADV");             // Bible “shi no” = sino spaced
+forceLiteral("iuta", "pound", "VT");             // 臼を搗く (i-uta)
+forceLiteral("harkakkok", "cuckoo", "NOUN");     // kakkok カッコウ variety
+forceLiteral("hauturumbe", "angel", "NOUN");     // Batchelor: angel, mediator
+forceLiteral("israeru", "Israel", "PROPN");
+forceLiteral("omande", "send", "VT");            // Batchelor: to send
+forceLiteral("ipet", "Ipet", "PROPN");           // river name: “Ipet peni”
+forceLiteral("erampetek", "not know", "VT");
+forceLiteral("sorekuska", "indeed", "ADV");      // sorekusu それこそ + ka
+forceLiteral("ikirok", "those", "ADN");          // それらの【連体】
+forceLiteral("korobe", "belongings", "NOUN");    // Batchelor
+forceLiteral("shongo", "message", "NOUN");       // Batchelor: news, tidings
+forceFrom("e-eat", "ee");                        // Sakhalin long vowel: “cehkii koh 'ee”
+forceLiteral("uwekarapa", "gather", "VI");       // Batchelor: to congregate
+forceLiteral("eramuskare", "not know", "VT");    // 静内 ～したことがない
+forceLiteral("paroho", "mouth", "NOUN");         // par possessed ～の口
+forceLiteral("ankushkerai", "thanks to", "ADV"); // Batchelor: by the help of
+forceLiteral("ekaci", "child", "NOUN");          // 男児、子供
+forceLiteral("shirosh", "sign", "NOUN");         // Batchelor: a sign, proof
+
+// ── Coverage pass 11 (batch 8 — bulk dictionary sweep round 3).
+forceLiteral("kashiketa", "upon", "ADV");        // Batchelor: upon, above
+forceLiteral("mondum", "power", "NOUN");         // Batchelor: power, ability
+forceLiteral("abe", "fire", "NOUN");             // ape voiced: “opopmau an abe”
+forceLiteral("koramkoro", "ask", "VT");          // Batchelor: to beg, ask
+forceLiteral("sambe", "heart", "NOUN");          // sampe voiced
+forceLiteral("turu", "dirt", "NOUN");            // Batchelor: filth (“turu-saktep”)
+forceLiteral("hoshiki", "before", "ADV");        // Batchelor: previous, former
+forceLiteral("kanne", "while", "PART");          // 接助 しながら
+forceLiteral("nanna", "elder sister", "NOUN");   // Sakhalin (Usoro 姉; vocative in tales)
+forceLiteral("estan", "search for", "VT");       // 静内/様似 探し回る
+forceFrom("sine", "sineh");                      // Sakhalin one (n→h final)
+forceLiteral("eraykotne", "anyway", "ADV");      // 鵡川 どうせ、どっちみち
+forceLiteral("itomo", "peace", "NOUN");          // Batchelor
+forceLiteral("uitek", "use", "VT");              // Batchelor (uitek guru “servant”)
+forceLiteral("karisia", "church", "NOUN");       // Bible Greek ekklesia loan
+forceLiteral("kayano", "Kayano", "PROPN");       // surname (Kayano Shigeru)
+forceLiteral("yahka", "even if", "SCONJ");       // Sakhalin 接助 しても
+forceLiteral("apostoro", "apostle", "NOUN");     // Bible Greek loan
+forceLiteral("tusunapanu", "(refrain)", "X");    // dict: sirkap 神謡の折り返し
+forceLiteral("tashum", "sickness", "NOUN");      // Batchelor
+forceLiteral("hitsuji", "sheep", "NOUN");        // Jap. loan in Bible
+
 // ── Batchelor fused a-passive (owner decision: curated list only, no auto-rule
 // because a+VERB collides with real words — apa “door”, aokai “you”). Each
 // verified in context; gloss composes 4.A= + the stem's gloss at build time so
