@@ -55,6 +55,8 @@
   .examples .ex { background: var(--chip); border: 1px solid var(--line); border-radius: 999px;
     padding: 4px 11px; font-size: 12.5px; cursor: pointer; color: var(--ink); font-family: var(--mono); }
   .examples .ex:hover { border-color: var(--accent); }
+  .examples .ex b { font-weight: 600; }
+  .examples .ex .exl { color: var(--muted); font-family: var(--ui); font-size: 11px; margin-left: 6px; }
   .hint { color: var(--muted); font-size: 12px; padding: 2px 0 8px; font-family: var(--mono); }
   .status { color: var(--muted); font-size: 13px; padding: 6px 0; min-height: 18px; }
   .pager { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
@@ -284,25 +286,24 @@ async function loadExamples() {
   const box = $("#examples");
   try {
     const exs = await get("/v1/examples");
-    const seen = new Set(), picks = [], viewCount = {};
-    let plainWords = 0;
+    const seen = new Set(), picks = [];
     for (const e of exs) {
       const s = exampleState(e);
       if (!s.q || seen.has(s.q + s.view)) continue;
-      // Keep the chip row varied: plain words all look alike and one chip per
-      // word-view suffices — leave room for filter/pattern/translation chips.
-      const isPlainWord = s.view === "contexts" && /^[a-zàáâèéêìíîòóôùúû='’]+$/i.test(s.q);
-      if (isPlainWord && plainWords >= 3) continue;
-      const capKey = s.q.includes("[") ? "pattern" : s.view;
-      if (capKey !== "contexts" && viewCount[capKey]) continue;
-      if (isPlainWord) plainWords++;
-      viewCount[capKey] = (viewCount[capKey] || 0) + 1;
       seen.add(s.q + s.view);
-      picks.push({ ...s, desc: e.desc });
-      if (picks.length >= 10) break;
+      // Annotate the runnable query with the example's human label, minus the
+      // query itself when the label leads (or trails, after a colon) with it.
+      const w = ((e.params || {}).q || (e.params || {}).word || (e.params || {}).surface || "").trim();
+      let ann = e.label || "";
+      if (w && ann.startsWith(w)) ann = ann.slice(w.length).replace(/^[-—:\s]+/, "");
+      else if (w && ann.endsWith(w) && /:\s+$/.test(ann.slice(0, -w.length))) ann = ann.slice(0, -w.length).replace(/[-—:\s]+$/, "");
+      // The view tag already names the view — don't repeat it in the label.
+      if (ann.toLowerCase() === s.view) ann = "";
+      else if (ann.toLowerCase().startsWith(s.view + " (")) ann = ann.slice(s.view.length).trim();
+      picks.push({ ...s, desc: e.desc, ann });
     }
     box.innerHTML = picks.map((s, i) =>
-      `<button type="button" class="ex" data-i="${i}" title="${esc(s.desc)}">${esc(s.q)}${VIEW_TAG[s.view] || ""}</button>`).join("");
+      `<button type="button" class="ex" data-i="${i}" title="${esc(s.desc)}"><b>${esc(s.q)}${VIEW_TAG[s.view] || ""}</b>${s.ann ? `<span class="exl">${esc(s.ann)}</span>` : ""}</button>`).join("");
     box.querySelectorAll(".ex").forEach((b) => b.addEventListener("click", () => {
       const s = picks[+b.dataset.i];
       resetOptions();
