@@ -136,3 +136,38 @@ test("getMeta: reads value by key", async () => {
   const { db } = fakeDb([[{ value: "{\"sentences\":196184}" }]]);
   expect(await getMeta(db, "corpus_stats")).toBe('{"sentences":196184}');
 });
+
+test("corpusSearch: enriches rows with source_slug via an indexed sentences lookup", async () => {
+  const row = { id: "prague#0", text: "Puraha or ta ci=ye itak.", translation: "プラハで私たちが言った言葉",
+    dialect: "沙流", author: "横山 裕之", collection: null, document: "プラハ宣言", uri: null };
+  const { db, calls } = fakeDb([[row], [{ id: "prague#0", source_slug: "prague-manifesto-ainu-translation" }]]);
+  const rows = await corpusSearch(db, { query: "puraha", lang: "ain", limit: 5 });
+  // The parity-locked FTS query is untouched; the slug comes from a follow-up
+  // sentences PK lookup (corpus_fts has no source_slug column).
+  expect(calls[0].sql).toContain("FROM corpus_fts");
+  expect(calls[1].sql).toContain("SELECT id, source_slug FROM sentences");
+  expect(calls[1].args).toEqual(["prague#0"]);
+  expect(rows[0].source_slug).toBe("prague-manifesto-ainu-translation");
+});
+
+test("corpusSearch: source_slug is null when the column is absent (older schema)", async () => {
+  const row = { id: "x#0", text: "kamuy", translation: "神", dialect: null, author: null,
+    collection: null, document: null, uri: null };
+  const db = {
+    prepare(sql: string) {
+      let args: unknown[] = [];
+      const stmt = {
+        bind(...a: unknown[]) { args = a; return stmt; },
+        async all<T>() {
+          if (sql.includes("source_slug")) throw new Error("no such column: source_slug");
+          return { results: [row] as T[] };
+        },
+        async first<T>() { return null as T | null; },
+      };
+      return stmt;
+    },
+  } as unknown as D1Database;
+  const rows = await corpusSearch(db, { query: "kamuy", lang: "ain", limit: 5 });
+  expect(rows.length).toBe(1);
+  expect(rows[0].source_slug).toBeNull(); // degraded, not crashed
+});

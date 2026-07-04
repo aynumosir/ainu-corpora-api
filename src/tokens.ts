@@ -6,6 +6,7 @@
  * the personal clitics `ku=`/`a=`/`=an` are their own tokens — which is what
  * makes adjacency queries ("VERB followed by =an") meaningful.
  */
+import { sourceSlugsFor } from "./db.js";
 
 function clampLimit(n: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
@@ -27,6 +28,7 @@ export interface ConcordanceLine {
   dialect: string | null;
   author: string | null;
   uri: string | null;
+  source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
 }
 
 export type SortMode = "none" | "left" | "right";
@@ -90,6 +92,7 @@ export async function concordance(
                LIMIT ?`;
   params.push(clampLimit(opts.limit));
   const { results } = await db.prepare(sql).bind(...params).all<TokRow>();
+  const slugs = await sourceSlugsFor(db, (results ?? []).map((r) => r.sentence_id));
 
   const w = Math.max(0, Math.floor(opts.window));
   const lines: ConcordanceLine[] = (results ?? []).map((r) => {
@@ -103,6 +106,7 @@ export async function concordance(
       dialect: r.dialect,
       author: r.author,
       uri: r.uri,
+      source_slug: slugs.get(r.sentence_id) ?? null,
     };
   });
 
@@ -171,6 +175,7 @@ export async function posSearch(
                LIMIT ?`;
   params.push(clampLimit(opts.limit));
   const { results } = await db.prepare(sql).bind(...params).all<PosRow>();
+  const slugs = await sourceSlugsFor(db, (results ?? []).map((r) => r.sentence_id));
 
   const w = Math.max(0, Math.floor(opts.window));
   return (results ?? []).map((r) => {
@@ -187,6 +192,7 @@ export async function posSearch(
       dialect: r.dialect,
       author: r.author,
       uri: r.uri,
+      source_slug: slugs.get(r.sentence_id) ?? null,
     };
   });
 }

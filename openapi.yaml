@@ -33,6 +33,7 @@ components:
         collection: { type: string, nullable: true }
         document: { type: string, nullable: true }
         uri: { type: string, nullable: true }
+        source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug (https://db.aynu.org/sources/<slug>); null when the collection has no registered source" }
     KwicLine:
       type: object
       properties:
@@ -44,6 +45,7 @@ components:
         dialect: { type: string, nullable: true }
         author: { type: string, nullable: true }
         uri: { type: string, nullable: true }
+        source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
     PosLine:
       allOf:
         - $ref: "#/components/schemas/KwicLine"
@@ -93,6 +95,7 @@ components:
         dialect: { type: string, nullable: true }
         author: { type: string, nullable: true }
         uri: { type: string, nullable: true }
+        source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
     Collocate:
       type: object
       properties:

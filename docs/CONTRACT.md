@@ -14,7 +14,7 @@ the corpus API directly. Full machine-readable spec: [`openapi.yaml`](../openapi
 ### KWIC concordance — `/v1/concordance`
 ```
 GET /v1/concordance?q=rayke&window=30&sort=right&match=exact&dialect=沙流
-→ data: [{ sentence_id, left, node, right, translation, dialect, author, uri }]
+→ data: [{ sentence_id, left, node, right, translation, dialect, author, uri, source_slug }]
 ```
 - `q` = node word (normalized: lowercased, edge apostrophes stripped). `match=prefix` for stem search.
 - `window` = context chars each side. `sort=left|right` orders by the context beside the node (for aligned reading); `none` = corpus order.
@@ -23,7 +23,7 @@ GET /v1/concordance?q=rayke&window=30&sort=right&match=exact&dialect=沙流
 ### POS / grammatical search — `/v1/pos`
 ```
 GET /v1/pos?upos=VERB&next_surface==an&limit=20
-→ data: [{ sentence_id, left, node, right, upos, lemma, translation, dialect, author, uri }]
+→ data: [{ sentence_id, left, node, right, upos, lemma, translation, dialect, author, uri, source_slug }]
 ```
 - Node filters: `upos` (UD: NOUN/VERB/ADP/PART/ADV/DET/AUX/SCONJ/NUM/PRON/INTJ…), `lemma`, `surface`.
 - Adjacency: `next_upos` / `next_surface` constrain the immediately following token (self-join on `idx+1`). The `node` field spans node→neighbour.
@@ -54,6 +54,13 @@ GET /v1/pos?upos=VERB&next_surface==an&limit=20
 | Inflected relatives of `arpa` | `/v1/inflections?word=arpa` |
 | Discover runnable examples | `/v1/examples?mode=kwic` |
 
+- **Source links:** result lines from `/v1/search`, `/v1/concordance`, `/v1/pos`
+  and `/v1/kwic` carry `source_slug` — the db.aynu.org source-record slug
+  (`https://db.aynu.org/sources/<slug>`) for provenance/licensing metadata.
+  `null` when the sentence's collection has no registered source record. The
+  collection→slug correspondence lives in this repo
+  ([`../data/collection_slugs.json`](../data/collection_slugs.json)) and is
+  joined into `sentences.source_slug` at token-load time.
 - **Accent folding:** `/v1/kwic` and `/v1/analytics` default to `match=fold`,
   which is pitch/length-insensitive (`nea`≡`néa`, `ramat`≡`rámat`). Use
   `match=exact` to keep diacritics, `match=prefix` for stems.

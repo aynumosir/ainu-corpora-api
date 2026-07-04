@@ -195,7 +195,7 @@ const line = (left: string[], node: string, right: string[], extra: any = {}): K
   node: [{ i: 99, s: node, n: node, p: null, l: null, x: null, f: null, cl: 0, node: true }],
   right: right.map((n, i) => ({ i, s: n, n, p: null, l: null, x: null, f: null, cl: 0 })),
   left_text: left.join(" "), node_text: node, right_text: right.join(" "),
-  translation: null, dialect: extra.dia ?? null, author: null, uri: null,
+  translation: null, dialect: extra.dia ?? null, author: null, uri: null, source_slug: null,
 });
 
 test("sort r1 orders by first right token", () => {
@@ -214,4 +214,23 @@ test("sort dialect orders by dialect string", () => {
   const ls = [line([], "x", [], { sid: "a", dia: "沙流" }), line([], "x", [], { sid: "b", dia: "千歳" })];
   sortLines(ls, "dialect");
   expect(ls[0].dialect).toBeTruthy();
+});
+
+test("KWIC lines carry source_slug from the sentences lookup", async () => {
+  const node = { sentence_id: "s1", idx: 0, char_start: 0, char_end: 5,
+    text: "rayke", translation: null, dialect: null, author: null, uri: null };
+  const sentToks = [tok(0, "rayke", { upos: "VERB" })];
+  const { db, calls } = fakeDb([[node], sentToks, [{ id: "s1", source_slug: "ainu-audio-materials" }]]);
+  const out = await kwic(db, { q: "rayke", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  expect(calls[2].sql).toContain("SELECT id, source_slug FROM sentences");
+  expect(out[0].source_slug).toBe("ainu-audio-materials");
+});
+
+test("KWIC source_slug is null when the sentence has no registered source", async () => {
+  const node = { sentence_id: "s1", idx: 0, char_start: 0, char_end: 5,
+    text: "rayke", translation: null, dialect: null, author: null, uri: null };
+  const sentToks = [tok(0, "rayke", { upos: "VERB" })];
+  const { db } = fakeDb([[node], sentToks, []]);
+  const out = await kwic(db, { q: "rayke", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  expect(out[0].source_slug).toBeNull();
 });

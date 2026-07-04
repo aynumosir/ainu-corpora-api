@@ -31,7 +31,7 @@ also travels in the body so non-URL consumers can assert it.
 | Method · Route | Params | Returns |
 |---|---|---|
 | `GET /health` | — | `{ ok, service }` |
-| `GET /v1/search` | `q` (required), `lang=ain\|jpn\|any` (def `any`), `dialect`, `author`, `limit` (def 20) | `CorpusRow[]` — `{id,text,translation,dialect,author,collection,document,uri}` |
+| `GET /v1/search` | `q` (required), `lang=ain\|jpn\|any` (def `any`), `dialect`, `author`, `limit` (def 20) | `CorpusRow[]` — `{id,text,translation,dialect,author,collection,document,uri,source_slug}` |
 | `GET /v1/stats` | — | `{ sentences, top_dialects }` (precomputed) |
 | `GET /v1/freq/word` | `token` (**already normalized**) | `{ token, found, count, is_stopword, rank }` |
 | `GET /v1/freq/list` | `limit` (def 100), `offset` (def 0), `includeStopwords` (def false), `minCount` (def 1) | `{ token, count, is_stopword }[]` |
@@ -63,7 +63,7 @@ recorded per token).
 
 | Method · Route | Params | Returns |
 |---|---|---|
-| `GET /v1/concordance` | `q` (required), `window` (40), `limit` (50), `sort=none\|left\|right`, `match=exact\|prefix`, `dialect`, `author` | KWIC `{sentence_id,left,node,right,translation,dialect,author,uri}[]` |
+| `GET /v1/concordance` | `q` (required), `window` (40), `limit` (50), `sort=none\|left\|right`, `match=exact\|prefix`, `dialect`, `author` | KWIC `{sentence_id,left,node,right,translation,dialect,author,uri,source_slug}[]` |
 | `GET /v1/pos` | at least one of `upos`,`lemma`,`surface`,`next_upos`,`next_surface`; plus `window`,`limit`,`dialect`,`author` | KWIC lines + `{upos,lemma}`. Adjacency via `next_*` (self-join on `idx+1`) — e.g. `?upos=VERB&next_surface==an` |
 
 ### Advanced token layer (Phase 4)
@@ -110,8 +110,10 @@ bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADV
 # load_tokens.mjs then:
 #   - backfills corpus_tokens.surface_fold (accent-folded key) at load time, and
 #   - loads build/morph_forms.jsonl into morph_forms (if present), and
-#   - loads build/morph_gloss.jsonl into morph_gloss (if present).
-# migrations/0002..0004 are applied automatically by the loader.
+#   - loads build/morph_gloss.jsonl into morph_gloss (if present), and
+#   - joins data/collection_slugs.json (collection title → db.aynu.org source
+#     record slug) into sentences.source_slug, exposed on search/KWIC lines.
+# migrations/0002..0005 are applied automatically by the loader.
 ```
 
 ## Develop

@@ -37,6 +37,39 @@ export interface CorpusRow {
   collection: string | null;
   document: string | null;
   uri: string | null;
+  source_slug: string | null;
+}
+
+/**
+ * sentence id → db.aynu.org source-record slug, for the ids that have one
+ * (e.g. `https://db.aynu.org/sources/<slug>` for provenance/licensing).
+ * The slug is joined into `sentences.source_slug` at token-load time by
+ * scripts/load_tokens.mjs from data/collection_slugs.json (collection title →
+ * slug; migrations/0005_source_slug.sql). Returns an empty map when the
+ * column/table is absent, so read paths degrade gracefully against an older
+ * schema (same policy as kwic.ts `missingSchema`).
+ */
+export async function sourceSlugsFor(db: D1Database, ids: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const uniq = [...new Set(ids)].filter(Boolean);
+  // Chunk the IN-list so we never blow the SQLite variable limit.
+  for (let i = 0; i < uniq.length; i += 200) {
+    const slice = uniq.slice(i, i + 200);
+    try {
+      const { results } = await db
+        .prepare(
+          `SELECT id, source_slug FROM sentences
+           WHERE source_slug IS NOT NULL AND id IN (${slice.map(() => "?").join(",")})`,
+        )
+        .bind(...slice)
+        .all<{ id: string; source_slug: string }>();
+      for (const r of results ?? []) if (r.id && r.source_slug) map.set(r.id, r.source_slug);
+    } catch (e) {
+      if (/no such column: .*source_slug|no such table: sentences/i.test(String(e instanceof Error ? e.message : e))) return map;
+      throw e;
+    }
+  }
+  return map;
 }
 
 export type CorpusLang = "ain" | "jpn" | "any";
@@ -81,7 +114,12 @@ export async function corpusSearch(
   const sql = `${select}${where} ORDER BY rowid LIMIT ?`;
   params.push(clampLimit(opts.limit));
   const { results } = await db.prepare(sql).bind(...params).all<CorpusRow>();
-  return results ?? [];
+  const rows = results ?? [];
+  if (!rows.length) return rows;
+  // corpus_fts predates source_slug (and FTS5 columns are frozen), so enrich
+  // via the indexed `sentences` PK instead of touching the parity-locked query.
+  const slugs = await sourceSlugsFor(db, rows.map((r) => r.id));
+  return rows.map((r) => ({ ...r, source_slug: slugs.get(r.id) ?? null }));
 }
 
 export async function getMeta(db: D1Database, key: string): Promise<string | null> {
