@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>aynu kampisos hunara — Ainu corpus · KWIC · POS · collocation</title>
+<title>aynu kampisos hunara — Ainu corpus search</title>
 <style>
   :root {
     --bg: #fbfaf7; --panel: #ffffff; --ink: #1c1a17; --muted: #6b645a;
@@ -27,28 +27,37 @@
   h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; }
   h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
   .wrap { max-width: 1240px; margin: 0 auto; padding: 0 22px; }
-  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 0 6px; }
-  .modes { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .modes button { border: 0; border-right: 1px solid var(--line); background: var(--panel); color: var(--muted);
-    padding: 8px 13px; font: inherit; font-size: 13px; cursor: pointer; }
-  .modes button:last-child { border-right: 0; }
-  .modes button[aria-selected="true"] { background: var(--accent); color: #fff; }
-  input[type=text], select { font: inherit; font-size: 14px; padding: 8px 10px; background: var(--panel);
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 0 4px; }
+  input[type=text], select { font: inherit; padding: 8px 10px; background: var(--panel);
     color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
-  input#q { flex: 1 1 240px; min-width: 200px; }
-  input.sm { width: 90px; } select.sm { padding: 8px; }
+  input#q { flex: 1 1 320px; min-width: 240px; font-size: 15px; padding: 10px 14px; font-family: var(--mono); }
+  input.sm { width: 90px; } select.sm { padding: 7px 8px; font-size: 13px; }
   .opt { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
-  .opt[hidden] { display: none; }
-  button.go { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font: inherit; font-weight: 600; cursor: pointer; }
-  button.ghost { background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 12px; cursor: pointer; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 2px 0 8px; }
-  .examples { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 10px; }
+  button.go { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 20px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.ghost { background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+  button.ghost[aria-pressed=true] { color: var(--accent); border-color: var(--accent); }
+  /* collapsed advanced options */
+  details.opts { width: 100%; padding: 2px 0 0; }
+  details.opts summary { cursor: pointer; color: var(--muted); font-size: 12px; width: fit-content;
+    list-style: none; padding: 2px 0; }
+  details.opts summary::before { content: "⚙ "; }
+  details.opts summary::-webkit-details-marker { display: none; }
+  details.opts .panel { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 0 4px; }
+  /* result views (tabs) + toolbar */
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0;
+    border-bottom: 1px solid var(--line); margin-top: 4px; }
+  .toolbar[hidden] { display: none; }
+  .tabs { display: flex; gap: 2px; margin-right: auto; }
+  .tabs button { border: 0; background: none; color: var(--muted); padding: 5px 10px; font: inherit;
+    font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tabs button[aria-selected=true] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .examples { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0; }
   .examples .ex { background: var(--chip); border: 1px solid var(--line); border-radius: 999px;
-    padding: 4px 11px; font-size: 12px; cursor: pointer; color: var(--ink); }
+    padding: 4px 11px; font-size: 12.5px; cursor: pointer; color: var(--ink); font-family: var(--mono); }
   .examples .ex:hover { border-color: var(--accent); }
-  .examples .ex b { font-weight: 650; }
-  .examples .ex span { color: var(--muted); }
-  .status { color: var(--muted); font-size: 13px; padding: 4px 0 10px; min-height: 20px; }
+  .hint { color: var(--muted); font-size: 12px; padding: 2px 0 8px; font-family: var(--mono); }
+  .status { color: var(--muted); font-size: 13px; padding: 6px 0; min-height: 18px; }
+  .pager { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
   .hits { padding-bottom: 60px; }
   .hit { border-bottom: 1px solid var(--line); padding: 9px 4px; }
   /* Token-grid KWIC */
@@ -57,7 +66,7 @@
   /* Clip BOTH axes explicitly. If only overflow-x is set to hidden, CSS
      computes overflow-y to `auto`, which turns these cells into scroll
      containers and shows a spurious vertical scrollbar (most visible in
-     Show-POS/gloss mode, where each token carries a second gloss line). */
+     POS/gloss mode, where each token carries a second gloss line). */
   .kwic .l { text-align: right; white-space: nowrap; overflow: hidden; }
   .kwic .r { text-align: left; white-space: nowrap; overflow: hidden; }
   .kwic .n { background: var(--node-bg); color: var(--node-ink); padding: 1px 5px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
@@ -74,8 +83,6 @@
      POS/lemma); columns wrap but each word's gloss stays under it. */
   body.gloss .tok { display: inline-block; vertical-align: top; text-align: center; }
   body.gloss .tok .g { display: block; }
-  /* In gloss mode the context wraps to fit the stacked tokens; keep overflow
-     visible so wrapped lines/glosses are never clipped or scrolled. */
   body.gloss .kwic .l, body.gloss .kwic .r { white-space: normal; overflow: visible; }
   .clitic { color: var(--accent); }
   .badge { font-family: var(--ui); font-size: 11px; color: var(--accent); border: 1px solid var(--line);
@@ -86,22 +93,22 @@
   .meta .src a { color: var(--link); text-decoration: none; }
   .row-sent { font-family: var(--mono); font-size: 14.5px; }
   .empty { color: var(--muted); padding: 30px 4px; }
-  /* Tables (collocation / analytics) */
+  /* Tables (collocates / distribution / forms) */
   table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
   table.data th, table.data td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
-  table.data th { color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; }
+  table.data th { color: var(--muted); font-weight: 600; }
   table.data td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); }
   table.data tr:hover td { background: var(--accent-soft); }
   .w { font-family: var(--mono); cursor: pointer; }
   .w:hover { color: var(--link); text-decoration: underline; }
   .pos-tag { color: var(--pos); background: var(--pos-bg); border-radius: 4px; padding: 0 5px; font-size: 11px; }
   .bar { height: 9px; background: var(--bar); border-radius: 3px; display: inline-block; vertical-align: middle; }
-  .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 8px; }
-  .analytics-grid h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); }
+  .dist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 8px; }
+  .dist-grid h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); }
   footer { color: var(--muted); font-size: 12px; padding: 18px 0 40px; border-top: 1px solid var(--line); }
   footer a { color: var(--link); }
   code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 12px; }
-  details.infl { margin: 4px 0 10px; font-size: 12.5px; color: var(--muted); }
+  details.infl { margin: 4px 0 2px; font-size: 12.5px; color: var(--muted); }
   details.infl summary { cursor: pointer; }
   details.infl .form { display: inline-block; margin: 2px 8px 2px 0; }
   details.infl .form b { color: var(--accent); cursor: pointer; }
@@ -109,29 +116,43 @@
 </head>
 <body>
 <header><div class="wrap">
-  <h1>aynu kampisos hunara <small>— Ainu corpus · KWIC · POS · collocation · structural · forms</small></h1>
+  <h1>aynu kampisos hunara <small>Ainu corpus search</small></h1>
 </div></header>
 
 <div class="wrap">
   <form id="f" autocomplete="off">
-    <div class="modes" role="tablist">
-      <button type="button" data-mode="kwic" aria-selected="true">KWIC</button>
-      <button type="button" data-mode="pos">POS</button>
-      <button type="button" data-mode="collocation">Collocation</button>
-      <button type="button" data-mode="structural">Structural</button>
-      <button type="button" data-mode="analytics">Analytics</button>
-      <button type="button" data-mode="inflection">Forms</button>
-      <button type="button" data-mode="text">Text</button>
-    </div>
-    <input type="text" id="q" placeholder="rayke">
+    <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · 神" autofocus>
+    <button class="go" type="submit">Search</button>
 
-    <!-- KWIC / shared -->
-    <label class="opt" id="o-match">match
-      <select id="match" class="sm">
-        <option value="fold">fold (accent-insensitive)</option>
-        <option value="exact">exact</option>
-        <option value="prefix">prefix</option>
-      </select></label>
+    <details class="opts" id="opts"><summary id="opts-summary">Options</summary><div class="panel">
+      <label class="opt">match
+        <select id="match" class="sm">
+          <option value="fold">accent-insensitive</option>
+          <option value="exact">exact</option>
+          <option value="prefix">prefix</option>
+        </select></label>
+      <label class="opt">expand
+        <select id="expand" class="sm"><option value="none">none</option><option value="plural">+ plural</option><option value="all">+ all forms</option></select></label>
+      <label class="opt">clitic
+        <select id="clitic" class="sm"><option value="any">any</option><option value="only">only</option><option value="exclude">exclude</option></select></label>
+      <label class="opt">dialect <input type="text" id="dialect" class="sm" placeholder="沙流"></label>
+      <label class="opt">limit <input type="text" id="limit" class="sm" value="50" style="width:56px"></label>
+      <label class="opt">±window <input type="text" id="window" class="sm" value="5" style="width:48px"></label>
+      <label class="opt">span
+        <select id="span" class="sm"><option value="both">both</option><option value="left">left</option><option value="right">right</option></select></label>
+      <label class="opt">rank by
+        <select id="measure" class="sm"><option value="log_dice">logDice</option><option value="t_score">t-score</option><option value="mi">MI</option></select></label>
+    </div></details>
+    <input type="hidden" id="offset" value="0">
+  </form>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <div class="tabs" id="tabs" role="tablist">
+      <button type="button" data-view="contexts" aria-selected="true">Contexts</button>
+      <button type="button" data-view="collocates">Collocates</button>
+      <button type="button" data-view="distribution">Distribution</button>
+      <button type="button" data-view="forms">Forms</button>
+    </div>
     <label class="opt" id="o-sort">sort
       <select id="sort" class="sm">
         <option value="none">corpus order</option>
@@ -139,56 +160,23 @@
         <option value="r1">1 right</option><option value="r2">2 right</option><option value="r3">3 right</option>
         <option value="node">node</option><option value="dialect">dialect</option><option value="author">author</option>
       </select></label>
-    <label class="opt" id="o-expand">expand
-      <select id="expand" class="sm"><option value="none">none</option><option value="plural">+ plural</option><option value="all">+ all forms</option></select></label>
-    <label class="opt" id="o-clitic">clitic
-      <select id="clitic" class="sm"><option value="any">any</option><option value="only">only</option><option value="exclude">exclude</option></select></label>
-
-    <!-- POS -->
-    <label class="opt" id="o-upos" hidden>UPOS
-      <select id="upos" class="sm">
-        <option value="">—</option>
-        <option>NOUN</option><option>VERB</option><option>ADP</option><option>PART</option>
-        <option>ADV</option><option>DET</option><option>AUX</option><option>SCONJ</option>
-        <option>NUM</option><option>PRON</option><option>INTJ</option><option>PROPN</option>
-      </select></label>
-    <label class="opt" id="o-next" hidden>next= <input type="text" id="next" class="sm" placeholder="=an"></label>
-    <label class="opt" id="o-lemma" hidden>lemma <input type="text" id="lemma" class="sm" placeholder="arpa"></label>
-
-    <!-- Collocation -->
-    <label class="opt" id="o-measure" hidden>measure
-      <select id="measure" class="sm"><option value="log_dice">logDice</option><option value="t_score">t-score</option><option value="mi">MI</option></select></label>
-    <label class="opt" id="o-span" hidden>span
-      <select id="span" class="sm"><option value="both">both</option><option value="left">left</option><option value="right">right</option></select></label>
-    <label class="opt" id="o-window" hidden>±win <input type="text" id="window" class="sm" value="5" style="width:48px"></label>
-
-    <!-- Text -->
-    <label class="opt" id="o-lang" hidden>lang
-      <select id="lang" class="sm"><option value="any">any</option><option value="ain">ain</option><option value="jpn">jpn</option></select></label>
-
-    <label class="opt">dialect <input type="text" id="dialect" class="sm" placeholder="沙流"></label>
-    <label class="opt">limit <input type="text" id="limit" class="sm" value="50" style="width:56px"></label>
-    <button class="go" type="submit">Search</button>
-    <input type="hidden" id="offset" value="0">
-  </form>
-
-  <div class="toolbar">
-    <button type="button" class="ghost" id="t-gloss">Show POS/gloss</button>
-    <button type="button" class="ghost" id="t-csv" hidden>Export CSV</button>
-    <span class="opt" style="margin-left:auto">click any word to search it</span>
+    <button type="button" class="ghost" id="t-gloss" aria-pressed="false">POS/gloss</button>
+    <button type="button" class="ghost" id="t-csv">CSV</button>
   </div>
 
-  <div class="examples" id="examples"></div>
+  <div id="intro">
+    <div class="examples" id="examples"></div>
+    <div class="hint">word · phrase · pos:VERB lemma:arpa next:=an · [upos=NOUN] pattern · kamuy* prefix · "ramat" exact · 日本語 → translations</div>
+  </div>
   <div id="infl"></div>
-  <div class="status" id="status">Type a word and search — e.g. <code>rayke</code> (KWIC), or try an example below.</div>
-  <div class="toolbar" id="pager"></div>
+  <div class="status" id="status"></div>
+  <div class="pager" id="pager"></div>
   <div class="hits" id="hits"></div>
 
   <footer>
     Data: <a href="https://github.com/aynumosir/ainu-corpora" target="_blank">ainu-corpora</a> ·
-    API: <a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/openapi.yaml" target="_blank">/v1</a>
-    (<a href="https://github.com/aynumosir/ainu-corpora-api" target="_blank">ainu-corpora-api</a>) ·
-    POS machine-tagged (UD), Latin-script only · inflection data from
+    API: <a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/openapi.yaml" target="_blank">/v1</a> ·
+    POS machine-tagged (UD) · forms from
     <a href="https://github.com/aynumosir/ainu-morpheme-database" target="_blank">ainu-morpheme-database</a>.
   </footer>
 </div>
@@ -198,37 +186,43 @@
 // otherwise (e.g. an embedded page on another origin) hit the public API.
 const LOCAL = ["localhost", "127.0.0.1", "0.0.0.0", ""].includes(location.hostname);
 const API = (location.hostname === "corpus.aynu.org" || LOCAL) ? "" : "https://corpus.aynu.org";
-let mode = "kwic";
+let view = "contexts";           // contexts | collocates | distribution | forms
+let lastKind = "kwic";           // what the last query classified as
 let lastRows = [], lastCols = null;
 const $ = (s) => document.querySelector(s);
 const esc = (s) => (s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-// Which option controls show per mode.
-const VISIBLE = {
-  kwic: ["o-match", "o-sort", "o-expand", "o-clitic"],
-  pos: ["o-upos", "o-next", "o-lemma", "o-sort"],
-  collocation: ["o-measure", "o-span", "o-window"],
-  structural: [],
-  analytics: ["o-match"],
-  inflection: [],
-  text: ["o-lang"],
-};
-const PLACEHOLDER = {
-  kwic: "rayke", pos: "surface (optional, e.g. arpa)", collocation: "kamuy",
-  structural: "[upos=NOUN] [upos=NOUN]", analytics: "kamuy", inflection: "arpa", text: "search text or 日本語訳",
-};
-
-function setMode(m) {
-  mode = m;
-  document.querySelectorAll(".modes button").forEach((b) => b.setAttribute("aria-selected", b.dataset.mode === m));
-  const vis = new Set(VISIBLE[m] || []);
-  ["o-match","o-sort","o-expand","o-clitic","o-upos","o-next","o-lemma","o-measure","o-span","o-window","o-lang"]
-    .forEach((id) => { const el = $("#"+id); if (el) el.hidden = !vis.has(id); });
-  $("#q").placeholder = PLACEHOLDER[m];
-  $("#infl").innerHTML = "";
-  loadExamples(m);
+// ─── one box, four query kinds ───
+// kwic     single word                    → concordance (+ word views)
+// pos      pos:VERB lemma:arpa next:=an   → grammatical filter concordance
+// pattern  several words or [upos=…]      → token-sequence search
+// text     any CJK                        → full-text / translation search
+const KIND_LABEL = { kwic: "", pos: "grammar filter", pattern: "pattern", text: "text search" };
+function parseQuery(raw) {
+  const out = { kind: "kwic", q: "", filters: {}, match: null };
+  const rest = [];
+  for (const tok of raw.trim().split(/\s+/).filter(Boolean)) {
+    const m = tok.match(/^(pos|upos|lemma|next|dialect):(.+)$/i);
+    if (m) out.filters[m[1].toLowerCase() === "pos" ? "upos" : m[1].toLowerCase()] = m[2];
+    else rest.push(tok);
+  }
+  let q = rest.join(" ");
+  if (/[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ]/.test(q)) return { ...out, kind: "text", q };
+  if (q.includes("[")) return { ...out, kind: "pattern", q };
+  if (Object.keys(out.filters).some((k) => k !== "dialect")) return { ...out, kind: "pos", q };
+  const quoted = q.match(/^"(.+)"$/);
+  if (quoted) { out.match = "exact"; q = quoted[1]; }
+  else if (q.endsWith("*")) { out.match = "prefix"; q = q.slice(0, -1); }
+  if (q.split(/\s+/).filter(Boolean).length > 1) return { ...out, kind: "pattern", q };
+  return { ...out, q };
 }
-document.querySelectorAll(".modes button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+function setView(v) {
+  view = v;
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.view === v));
+}
+document.querySelectorAll("#tabs button").forEach((b) =>
+  b.addEventListener("click", () => { setView(b.dataset.view); resetOffset(); run(); }));
 
 async function getRaw(path) {
   const r = await fetch(API + path);
@@ -246,7 +240,7 @@ function renderPager(meta, shown) {
   const from = meta.total ? off + 1 : 0, to = off + shown;
   pg.innerHTML =
     `<button class="ghost" id="pg-prev"${off <= 0 ? " disabled" : ""}>‹ prev</button>
-     <span class="opt">showing <b>${from}–${to}</b> of <b>${meta.total}</b></span>
+     <span class="opt">${from}–${to} of ${meta.total}</span>
      <button class="ghost" id="pg-next"${to >= meta.total ? " disabled" : ""}>next ›</button>`;
   $("#pg-prev")?.addEventListener("click", () => { $("#offset").value = Math.max(0, off - lim); run(); });
   $("#pg-next")?.addEventListener("click", () => { $("#offset").value = off + lim; run(); });
@@ -258,37 +252,70 @@ function src(d) {
   return d.uri ? `<a href="${esc(d.uri)}" target="_blank">${esc(label || "source")}</a>` : esc(label);
 }
 
-// ─── examples (self-describing, from /v1/examples) ───
-async function loadExamples(m) {
+// ─── examples (empty-state chips, from /v1/examples) ───
+// The API's examples are per-endpoint; map each onto the one-box syntax so the
+// chips both run AND teach the conventions.
+function exampleState(e) {
+  const p = e.params || {};
+  switch (e.mode) {
+    case "kwic": {
+      let q = p.q || "";
+      if (p.match === "prefix") q += "*";
+      else if (p.match === "exact") q = `"${q}"`;
+      return { q, view: "contexts", opts: { sort: p.sort, expand: p.expand, clitic: p.clitic, dialect: p.dialect } };
+    }
+    case "pos": {
+      const bits = [];
+      if (p.surface) bits.push(p.surface);
+      if (p.upos) bits.push("pos:" + p.upos);
+      if (p.lemma) bits.push("lemma:" + p.lemma);
+      if (p.next_surface) bits.push("next:" + p.next_surface);
+      return { q: bits.join(" "), view: "contexts", opts: {} };
+    }
+    case "collocation": return { q: p.q, view: "collocates", opts: { window: p.window, span: p.span, measure: p.measure } };
+    case "analytics": return { q: p.q, view: "distribution", opts: {} };
+    case "inflection": return { q: p.word, view: "forms", opts: {} };
+    case "structural": return { q: p.pattern, view: "contexts", opts: {} };
+    default: return { q: p.q, view: "contexts", opts: {} };
+  }
+}
+const VIEW_TAG = { collocates: " → collocates", distribution: " → distribution", forms: " → forms" };
+async function loadExamples() {
   const box = $("#examples");
-  box.innerHTML = "";
   try {
-    const exs = await get(`/v1/examples?mode=${encodeURIComponent(m)}`);
-    box.innerHTML = exs.map((e, i) =>
-      `<button type="button" class="ex" data-i="${i}" title="${esc(e.desc)}"><b>${esc(e.label)}</b></button>`
-    ).join("");
-    box.querySelectorAll(".ex").forEach((b) => b.addEventListener("click", () => applyExample(exs[+b.dataset.i])));
+    const exs = await get("/v1/examples");
+    const seen = new Set(), picks = [], viewCount = {};
+    let plainWords = 0;
+    for (const e of exs) {
+      const s = exampleState(e);
+      if (!s.q || seen.has(s.q + s.view)) continue;
+      // Keep the chip row varied: plain words all look alike and one chip per
+      // word-view suffices — leave room for filter/pattern/translation chips.
+      const isPlainWord = s.view === "contexts" && /^[a-zàáâèéêìíîòóôùúû='’]+$/i.test(s.q);
+      if (isPlainWord && plainWords >= 3) continue;
+      const capKey = s.q.includes("[") ? "pattern" : s.view;
+      if (capKey !== "contexts" && viewCount[capKey]) continue;
+      if (isPlainWord) plainWords++;
+      viewCount[capKey] = (viewCount[capKey] || 0) + 1;
+      seen.add(s.q + s.view);
+      picks.push({ ...s, desc: e.desc });
+      if (picks.length >= 10) break;
+    }
+    box.innerHTML = picks.map((s, i) =>
+      `<button type="button" class="ex" data-i="${i}" title="${esc(s.desc)}">${esc(s.q)}${VIEW_TAG[s.view] || ""}</button>`).join("");
+    box.querySelectorAll(".ex").forEach((b) => b.addEventListener("click", () => {
+      const s = picks[+b.dataset.i];
+      resetOptions();
+      for (const [k, v] of Object.entries(s.opts || {})) if (v != null && $("#" + k)) $("#" + k).value = v;
+      $("#q").value = s.q;
+      setView(s.view);
+      resetOffset();
+      run();
+    }));
   } catch (e) { /* examples are optional */ }
 }
-function applyExample(e) {
-  const p = e.params || {};
-  if (e.mode && e.mode !== mode && $(`.modes button[data-mode="${e.mode}"]`)) setMode(e.mode);
-  // Reset fields so example chips are exact, not "current query + example".
-  $("#q").value = ""; $("#next").value = ""; $("#lemma").value = ""; $("#dialect").value = "";
-  $("#upos").value = ""; $("#match").value = "fold"; $("#sort").value = "none";
-  $("#expand").value = "none"; $("#clitic").value = "any"; $("#measure").value = "log_dice";
-  $("#span").value = "both"; $("#window").value = "5"; $("#lang").value = "any";
-  if (p.q) $("#q").value = p.q;
-  if (p.surface) $("#q").value = p.surface;
-  if (p.word) $("#q").value = p.word;
-  if (p.pattern) $("#q").value = p.pattern;
-  const setIf = (id, v) => { if (v != null && $("#"+id)) $("#"+id).value = v; };
-  setIf("lemma", p.lemma);
-  setIf("match", p.match); setIf("sort", p.sort); setIf("expand", p.expand); setIf("clitic", p.clitic);
-  setIf("upos", p.upos); setIf("next", p.next_surface); setIf("measure", p.measure); setIf("span", p.span);
-  setIf("window", p.window); setIf("lang", p.lang); setIf("dialect", p.dialect); setIf("limit", p.limit);
-  resetOffset();
-  run();
+function resetOptions() {
+  for (const [k, v] of Object.entries(OPT_DEFAULTS)) { const el = $("#" + k); if (el) el.value = v; }
 }
 
 // ─── token rendering (clickable + optional gloss) ───
@@ -314,7 +341,7 @@ function kwicTokRow(d, badge) {
       <span class="l">${L}</span><span class="n">${N}</span><span class="r">${R}</span>
     </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div></div>`;
 }
-// classic string KWIC for POS mode (left/node/right strings)
+// classic string KWIC for grammar-filter results (left/node/right strings)
 function kwicStrRow(d, badge) {
   return `<div class="hit"><div class="kwic">
       <span class="l">${esc(d.left)}</span><span class="n">${esc(d.node)}</span><span class="r">${esc(d.right)}</span>
@@ -326,16 +353,15 @@ function bindWordClicks() {
     el.addEventListener("click", () => {
       const w = el.dataset.w; if (!w) return;
       $("#q").value = w;
-      if (mode === "structural" || mode === "text") setMode("kwic");
+      if (view === "distribution" || view === "forms") setView("contexts");
       resetOffset();
       run();
     });
   });
 }
 
-// ─── inflection chooser (singular↔plural etc.) ───
+// ─── inline related forms (singular↔plural etc., under a word's contexts) ───
 async function showInflections(word) {
-  if (mode !== "kwic" || !word) { $("#infl").innerHTML = ""; return; }
   try {
     const data = await get(`/v1/inflections?word=${encodeURIComponent(word)}`);
     if (!data.forms || !data.forms.length) { $("#infl").innerHTML = ""; return; }
@@ -345,13 +371,11 @@ async function showInflections(word) {
     // of the current query tells us which side we're on.
     const cur = data.fold;
     const fold = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f'’ʼʻ`´]/g, "").normalize("NFC").toLowerCase();
-    const targets = new Map(); // foldedTarget -> {label, rel, locus, of}
+    const targets = new Map(); // foldedTarget -> {label, rel, locus}
     for (const f of data.forms) {
       const lemF = fold(f.lemma), surF = fold(f.surface);
       // If we're on the surface, jump to the lemma (base/singular); else jump to the surface.
       const onSurface = surF === cur && lemF !== cur;
-      // onSurface (e.g. viewing "ronnu"): jump to the base/lemma ("rayke").
-      // else (viewing the base "rayke"): jump to the inflected surface ("ronnu").
       const target = onSurface ? f.lemma : f.surface;
       const rel = onSurface ? `${f.relation} base` : f.relation;
       const key = fold(target);
@@ -368,13 +392,13 @@ async function showInflections(word) {
       `<span class="form">${esc(t.rel)}: <b data-w="${esc(t.label)}">${esc(t.label)}</b>`
       + (t.locus ? ` <span>[${esc(t.locus)}]</span>` : "") + `</span>`
     ).join("");
-    $("#infl").innerHTML = `<details class="infl" open><summary>${targets.size} related form(s) — click to search</summary>${items}</details>`;
+    $("#infl").innerHTML = `<details class="infl" open><summary>${targets.size} related form(s)</summary>${items}</details>`;
     $("#infl").querySelectorAll("b[data-w]").forEach((b) =>
       b.addEventListener("click", () => { $("#q").value = b.dataset.w; resetOffset(); run(); }));
   } catch (e) { $("#infl").innerHTML = ""; }
 }
 
-// ─── table rendering (collocation / analytics) ───
+// ─── table views (collocates / distribution / forms) ───
 function colTable(data) {
   if (!data.collocates || !data.collocates.length) return `<div class="empty">No collocates.</div>`;
   const head = `<tr><th>collocate</th><th>POS</th><th class="num">freq</th><th class="num">total</th>
@@ -383,7 +407,7 @@ function colTable(data) {
     `<tr><td class="w" data-w="${esc(c.token)}">${esc(c.token)}</td><td>${c.upos?`<span class="pos-tag">${esc(c.upos)}</span>`:""}</td>
       <td class="num">${c.freq}</td><td class="num">${c.total}</td>
       <td class="num">${c.log_dice}</td><td class="num">${c.t_score}</td><td class="num">${c.mi}</td></tr>`).join("");
-  return `<p class="meta">node <b>${esc(data.node)}</b> — ${data.node_freq} occurrences in ${data.corpus_tokens} tokens</p>
+  return `<p class="meta">neighbours of <b>${esc(data.node)}</b> — ${data.node_freq} occurrences in ${data.corpus_tokens} tokens</p>
     <table class="data">${head}${rows}</table>`;
 }
 function distBlock(title, rows) {
@@ -394,16 +418,16 @@ function distBlock(title, rows) {
       <td><span class="bar" style="width:${Math.round(100*r.count/max)}px"></span></td></tr>`).join("");
   return `<div><h3>${esc(title)}</h3><table class="data">${body}</table></div>`;
 }
-function analyticsView(data) {
-  return `<p class="meta">node <b>${esc(data.node)}</b> — ${data.total} occurrences</p>
-    <div class="analytics-grid">
+function distView(data) {
+  return `<p class="meta"><b>${esc(data.node)}</b> — ${data.total} occurrences</p>
+    <div class="dist-grid">
       ${distBlock("Dialect", data.dialects)}
       ${distBlock("Author", data.authors)}
       ${distBlock("Collection", data.collections)}
       ${distBlock("POS (tagger spread)", data.upos)}
     </div>`;
 }
-function inflectionView(data) {
+function formsView(data) {
   const forms = data.forms || [];
   if (!forms.length) return `<div class="empty">No related forms found for <b>${esc(data.query)}</b>.</div>`;
   const rows = forms.map((f) =>
@@ -412,170 +436,175 @@ function inflectionView(data) {
       <td>${esc(f.relation)}</td><td>${esc(f.number_locus || "")}</td><td>${esc(f.form_length || "")}</td>
       <td>${esc(f.source || "")}</td><td class="num">${f.confidence ?? ""}</td><td>${esc(f.rule_id || "")}</td></tr>`
   ).join("");
-  return `<p class="meta">Inflectional relatives of <b>${esc(data.query)}</b> (fold: <code>${esc(data.fold)}</code>)</p>
+  return `<p class="meta">Inflectional relatives of <b>${esc(data.query)}</b></p>
     <table class="data"><tr><th>surface</th><th>lemma</th><th>relation</th><th>number locus</th><th>length</th><th>source</th><th>confidence</th><th>rule</th></tr>${rows}</table>`;
 }
 
 // ─── CSV export ───
 function toCsv() {
   let header, lines;
-  if (mode === "collocation" && lastCols) {
+  if (view === "collocates" && lastCols) {
     header = ["collocate","upos","freq","total","log_dice","t_score","mi"];
     lines = lastCols.collocates.map((c) => [c.token,c.upos,c.freq,c.total,c.log_dice,c.t_score,c.mi]);
-  } else if (mode === "kwic") {
-    header = ["left","node","right","translation","dialect","author","uri"];
-    lines = lastRows.map((d) => [d.left_text, d.node_text, d.right_text, d.translation, d.dialect, d.author, d.uri]);
-  } else if (mode === "pos") {
-    header = ["left","node","right","upos","lemma","translation","dialect","author","uri"];
-    lines = lastRows.map((d) => [d.left, d.node, d.right, d.upos, d.lemma, d.translation, d.dialect, d.author, d.uri]);
-  } else if (mode === "structural") {
-    header = ["left","match","right","translation","dialect","author","uri"];
-    lines = lastRows.map((d) => [d.left_text, d.match_text, d.right_text, d.translation, d.dialect, d.author, d.uri]);
-  } else if (mode === "inflection") {
+  } else if (view === "forms") {
     header = ["surface","lemma","relation","number_locus","form_length","source","confidence","rule_id"];
     lines = lastRows.map((f) => [f.surface, f.lemma, f.relation, f.number_locus, f.form_length, f.source, f.confidence, f.rule_id]);
+  } else if (lastKind === "kwic") {
+    header = ["left","node","right","translation","dialect","author","uri"];
+    lines = lastRows.map((d) => [d.left_text, d.node_text, d.right_text, d.translation, d.dialect, d.author, d.uri]);
+  } else if (lastKind === "pos") {
+    header = ["left","node","right","upos","lemma","translation","dialect","author","uri"];
+    lines = lastRows.map((d) => [d.left, d.node, d.right, d.upos, d.lemma, d.translation, d.dialect, d.author, d.uri]);
+  } else if (lastKind === "pattern") {
+    header = ["left","match","right","translation","dialect","author","uri"];
+    lines = lastRows.map((d) => [d.left_text, d.match_text, d.right_text, d.translation, d.dialect, d.author, d.uri]);
   } else { header = ["text","translation","dialect","author","uri"];
     lines = lastRows.map((d) => [d.text, d.translation, d.dialect, d.author, d.uri]); }
   const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = [header, ...lines].map((r) => r.map(q).join(",")).join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = `kampisos-${mode}-${Date.now()}.csv`; a.click();
+  a.download = `kampisos-${view === "contexts" ? lastKind : view}-${Date.now()}.csv`; a.click();
 }
 $("#t-csv").addEventListener("click", toCsv);
 $("#t-gloss").addEventListener("click", () => {
-  document.body.classList.toggle("gloss");
-  $("#t-gloss").textContent = document.body.classList.contains("gloss") ? "Hide POS/gloss" : "Show POS/gloss";
+  const on = document.body.classList.toggle("gloss");
+  $("#t-gloss").setAttribute("aria-pressed", on);
 });
+$("#sort").addEventListener("change", () => { resetOffset(); run(); });
+
+// Options is collapsed — echo any non-default setting on the summary line so
+// a filter (e.g. dialect from an example chip) is never silently active.
+function updateOptsSummary() {
+  const bits = [];
+  for (const [k, v] of Object.entries(OPT_DEFAULTS)) {
+    if (k === "offset" || k === "sort") continue;
+    const cur = ($("#" + k)?.value ?? "").trim();
+    if (cur && cur !== v) bits.push(`${k}: ${cur}`);
+  }
+  $("#opts-summary").textContent = "Options" + (bits.length ? " · " + bits.join(" · ") : "");
+}
+$("#opts").addEventListener("change", updateOptsSummary);
 
 // ─── shareable URL state (form ⇄ querystring, back/forward) ───
-const URL_FIELDS = { q: "#q", match: "#match", sort: "#sort", expand: "#expand", clitic: "#clitic",
-  upos: "#upos", next: "#next", lemma: "#lemma", measure: "#measure", span: "#span",
-  window: "#window", lang: "#lang", dialect: "#dialect", limit: "#limit", offset: "#offset" };
-const URL_DEFAULTS = { q: "", match: "fold", sort: "none", expand: "none", clitic: "any",
-  upos: "", next: "", lemma: "", measure: "log_dice", span: "both", window: "5",
-  lang: "any", dialect: "", limit: "50", offset: "0" };
+const OPT_DEFAULTS = { match: "fold", sort: "none", expand: "none", clitic: "any",
+  measure: "log_dice", span: "both", window: "5", dialect: "", limit: "50", offset: "0" };
+const URL_FIELDS = ["q", ...Object.keys(OPT_DEFAULTS)];
 let suppressUrl = false;
 
 function writeUrl() {
   const p = new URLSearchParams();
-  if (mode !== "kwic") p.set("mode", mode);
-  for (const [k, sel] of Object.entries(URL_FIELDS)) {
-    const v = ($(sel)?.value ?? "").trim();
-    if (v && v !== URL_DEFAULTS[k]) p.set(k, v);
+  if (view !== "contexts") p.set("view", view);
+  for (const k of URL_FIELDS) {
+    const v = ($("#" + k)?.value ?? "").trim();
+    if (v && v !== (OPT_DEFAULTS[k] ?? "")) p.set(k, v);
   }
   const url = p.toString() ? "?" + p.toString() : location.pathname;
   if ((location.search || location.pathname) !== url) history.pushState(null, "", url);
 }
 function readUrl() {
   const p = new URLSearchParams(location.search);
-  setMode(p.get("mode") || "kwic"); // toggles visible controls + examples
-  for (const [k, sel] of Object.entries(URL_FIELDS)) {
-    const el = $(sel); if (el) el.value = p.has(k) ? p.get(k) : URL_DEFAULTS[k];
+  setView(["collocates","distribution","forms"].includes(p.get("view")) ? p.get("view") : "contexts");
+  for (const k of URL_FIELDS) {
+    const el = $("#" + k); if (el) el.value = p.has(k) ? p.get(k) : (OPT_DEFAULTS[k] ?? "");
   }
-  return [...p.keys()].length > 0;
+  return !!p.get("q");
 }
 window.addEventListener("popstate", () => { suppressUrl = true; readUrl(); run().finally(() => { suppressUrl = false; }); });
 
 // ─── main run ───
 async function run() {
   if (!suppressUrl) writeUrl();
-  const q = $("#q").value.trim();
-  const limit = encodeURIComponent($("#limit").value || "50");
-  const dialect = $("#dialect").value.trim();
-  const dp = dialect ? `&dialect=${encodeURIComponent(dialect)}` : "";
-  $("#status").textContent = "Searching…";
-  $("#hits").innerHTML = "";
-  $("#pager").innerHTML = "";
-  $("#t-csv").hidden = true;
+  updateOptsSummary();
+  const parsed = parseQuery($("#q").value);
+  const { kind, q, filters } = parsed;
+  lastKind = kind;
+  const limit = $("#limit").value || "50";
+  const dialect = filters.dialect || $("#dialect").value.trim();
+  const isWord = kind === "kwic" && !!q;
+  // Word views only make sense for a single word; otherwise fall back to contexts.
+  if (!isWord && view !== "contexts") setView("contexts");
+  $("#status").textContent = q || Object.keys(filters).length ? "Searching…" : "";
+  $("#hits").innerHTML = ""; $("#pager").innerHTML = ""; $("#infl").innerHTML = "";
+  $("#t-csv").style.display = "none";
   lastRows = []; lastCols = null;
+  const hasQuery = q || Object.keys(filters).some((k) => k !== "dialect");
+  $("#intro").hidden = !!hasQuery;
+  $("#toolbar").hidden = !hasQuery;
+  $("#tabs").style.display = isWord ? "" : "none";
+  $("#o-sort").style.display = isWord && view === "contexts" ? "" : "none";
+  $("#t-gloss").style.display = (isWord || kind === "pattern") && view === "contexts" ? "" : "none";
+  if (!hasQuery) return;
   try {
-    if (mode === "kwic") {
-      if (!q) return done("Enter a word.");
-      const p = new URLSearchParams({ q, limit: $("#limit").value || "50", offset: $("#offset").value || "0", ctx: "6",
-        sort: $("#sort").value, match: $("#match").value, expand: $("#expand").value, clitic: $("#clitic").value });
+    if (view === "collocates" && isWord) {
+      const p = new URLSearchParams({ q, window: $("#window").value || "5",
+        span: $("#span").value, measure: $("#measure").value, limit });
+      if (dialect) p.set("dialect", dialect);
+      lastCols = await get(`/v1/collocation?${p}`);
+      $("#hits").innerHTML = colTable(lastCols);
+      done(`${lastCols.collocates?.length || 0} collocates.`);
+    } else if (view === "distribution" && isWord) {
+      const data = await get(`/v1/analytics?q=${encodeURIComponent(q)}&match=${$("#match").value}&top=12`);
+      $("#hits").innerHTML = distView(data);
+      done("");
+    } else if (view === "forms" && isWord) {
+      const data = await get(`/v1/inflections?word=${encodeURIComponent(q)}`);
+      lastRows = data.forms || [];
+      $("#hits").innerHTML = formsView(data);
+      done(`${lastRows.length} related form${lastRows.length === 1 ? "" : "s"}.`);
+    } else if (kind === "kwic") {
+      const p = new URLSearchParams({ q, limit, offset: $("#offset").value || "0", ctx: "6",
+        sort: $("#sort").value, match: parsed.match || $("#match").value,
+        expand: $("#expand").value, clitic: $("#clitic").value });
       if (dialect) p.set("dialect", dialect);
       const j = await getRaw(`/v1/kwic?${p}`);
-      const rows = j.data;
-      lastRows = rows;
-      $("#hits").innerHTML = rows.length ? rows.map((d) => kwicTokRow(d)).join("") : `<div class="empty">No matches.</div>`;
-      renderPager(j.meta, rows.length);
+      lastRows = j.data;
+      $("#hits").innerHTML = lastRows.length ? lastRows.map((d) => kwicTokRow(d)).join("") : `<div class="empty">No matches.</div>`;
+      renderPager(j.meta, lastRows.length);
+      done(j.meta?.total ? "" : `${lastRows.length} result${lastRows.length === 1 ? "" : "s"}.`);
       showInflections(q);
-    } else if (mode === "pos") {
-      const upos = $("#upos").value, next = $("#next").value.trim(), lemma = $("#lemma").value.trim();
-      if (!q && !upos && !next && !lemma) return done("Pick a UPOS, surface, lemma, or next= filter.");
-      const p = new URLSearchParams({ limit: $("#limit").value || "50", window: "34" });
-      if (upos) p.set("upos", upos);
+    } else if (kind === "pos") {
+      const p = new URLSearchParams({ limit, window: "34" });
+      if (filters.upos) p.set("upos", filters.upos.toUpperCase());
+      if (filters.lemma) p.set("lemma", filters.lemma);
+      if (filters.next) p.set("next_surface", filters.next);
       if (q) p.set("surface", q);
-      if (lemma) p.set("lemma", lemma);
-      if (next) p.set("next_surface", next);
       if (dialect) p.set("dialect", dialect);
-      const rows = await get(`/v1/pos?${p}`);
-      lastRows = rows;
-      $("#hits").innerHTML = rows.length ? rows.map((d) =>
+      lastRows = await get(`/v1/pos?${p}`);
+      $("#hits").innerHTML = lastRows.length ? lastRows.map((d) =>
         kwicStrRow(d, d.upos ? `<span class="badge">${esc(d.upos)}${d.lemma ? " · " + esc(d.lemma) : ""}</span>` : "")
       ).join("") : `<div class="empty">No matches.</div>`;
-    } else if (mode === "collocation") {
-      if (!q) return done("Enter a node word.");
-      const p = new URLSearchParams({ q, window: $("#window").value || "5",
-        span: $("#span").value, measure: $("#measure").value, limit: $("#limit").value || "50" });
+      done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
+    } else if (kind === "pattern") {
+      const p = new URLSearchParams({ pattern: q, limit });
       if (dialect) p.set("dialect", dialect);
-      const data = await get(`/v1/collocation?${p}`);
-      lastCols = data;
-      $("#hits").innerHTML = colTable(data);
-    } else if (mode === "structural") {
-      const pattern = q || $("#q").value;
-      if (!pattern.trim()) return done("Enter a pattern, e.g. [upos=NOUN] [upos=NOUN]");
-      const p = new URLSearchParams({ pattern, limit: $("#limit").value || "50" });
-      if (dialect) p.set("dialect", dialect);
-      const rows = await get(`/v1/structural?${p}`);
-      lastRows = rows;
-      $("#hits").innerHTML = rows.length ? rows.map((d) =>
+      lastRows = await get(`/v1/structural?${p}`);
+      $("#hits").innerHTML = lastRows.length ? lastRows.map((d) =>
         `<div class="hit"><div class="kwic"><span class="l">${esc(d.left_text)}</span>
           <span class="n">${(d.match||[]).map((m)=>tokHtml({s:m.s,n:m.n,p:m.p,l:m.l,cl:0},true)).join(" ")}</span>
           <span class="r">${esc(d.right_text)}</span></div>
           <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
       ).join("") : `<div class="empty">No matches.</div>`;
-    } else if (mode === "analytics") {
-      if (!q) return done("Enter a word.");
-      const data = await get(`/v1/analytics?q=${encodeURIComponent(q)}&match=${$("#match").value}&top=12`);
-      $("#hits").innerHTML = analyticsView(data);
-    } else if (mode === "inflection") {
-      if (!q) return done("Enter a word.");
-      const data = await get(`/v1/inflections?word=${encodeURIComponent(q)}`);
-      lastRows = data.forms || [];
-      $("#hits").innerHTML = inflectionView(data);
-    } else {
-      if (!q) return done("Enter a query.");
-      const rows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=${$("#lang").value}&limit=${limit}${dp}`);
-      lastRows = rows;
-      $("#hits").innerHTML = rows.length ? rows.map((d) =>
+      done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
+    } else { // text
+      lastRows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=any&limit=${encodeURIComponent(limit)}${dialect ? `&dialect=${encodeURIComponent(dialect)}` : ""}`);
+      $("#hits").innerHTML = lastRows.length ? lastRows.map((d) =>
         `<div class="hit"><div class="row-sent">${esc(d.text)}</div>
           <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
       ).join("") : `<div class="empty">No matches.</div>`;
+      done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
     }
     bindWordClicks();
-    if (mode === "analytics") { $("#t-csv").hidden = true; done("Done."); }
-    else if (mode === "collocation") {
-      const n = lastCols?.collocates?.length || 0;
-      $("#t-csv").hidden = !n;
-      done(`${n} collocate${n === 1 ? "" : "s"}.`);
-    } else if (mode === "inflection") {
-      $("#t-csv").hidden = !lastRows.length;
-      done(`${lastRows.length} related form${lastRows.length === 1 ? "" : "s"}.`);
-    } else {
-      $("#t-csv").hidden = !lastRows.length;
-      done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"}.`);
-    }
+    $("#t-csv").style.display = (lastRows.length || lastCols?.collocates?.length) ? "" : "none";
   } catch (e) {
     done("Error — " + e.message);
   }
 }
 $("#f").addEventListener("submit", (e) => { e.preventDefault(); resetOffset(); run(); });
 
-// Restore from a shared/bookmarked URL, else default to KWIC.
+// Restore from a shared/bookmarked URL, else show the empty state.
+loadExamples();
 if (readUrl()) { suppressUrl = true; run().finally(() => { suppressUrl = false; }); }
-else setMode("kwic");
 </script>
 </body>
 </html>

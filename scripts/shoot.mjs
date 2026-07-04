@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 /**
  * Serve the UI against a LOCAL bun:sqlite copy of the corpus (build/corpus.db)
- * mounting the real Hono app, and screenshot every search mode (KWIC w/ gloss,
- * POS lemma, collocation, structural, analytics, forms) in light & dark for visual review.
+ * mounting the real Hono app, and screenshot the one-box UI: empty state,
+ * every auto-detected query kind (word/gloss, filter, pattern, text) and every
+ * word view (collocates, distribution, forms) in light & dark for visual review.
  * Outputs build/ui-*.png. Requires build/corpus.db (see load_tokens.mjs).
  *
  *   bun scripts/shoot.mjs
@@ -55,17 +56,26 @@ async function shoot(name, scheme, fn) {
   await ctx.close();
 }
 
-const go = (p) => p.click("button.go");
-await shoot("ui-kwic-gloss", "light", async (p) => { await p.fill("#q", "rayke"); await p.selectOption("#sort", "r1"); await go(p); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
+const search = async (p, q) => { await p.fill("#q", q); await p.click("button.go"); };
+const tab = (p, v) => p.click(`#tabs button[data-view="${v}"]`);
+
+await shoot("ui-empty", "light", async () => {});
+await shoot("ui-empty-dark", "dark", async () => {});
+await shoot("ui-word-gloss", "light", async (p) => { await search(p, "rayke"); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
 // Homograph alternates: `pa` displays NOUN “head” with alt PL / mouth (gloss mode).
-await shoot("ui-kwic-alt-light", "light", async (p) => { await p.fill("#q", "pa"); await go(p); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
-await shoot("ui-kwic-alt-dark", "dark", async (p) => { await p.fill("#q", "pa"); await go(p); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
-await shoot("ui-kwic-dark", "dark", async (p) => { await p.fill("#q", "arpa"); await p.selectOption("#expand", "plural"); await go(p); await p.waitForSelector(".hit"); });
-await shoot("ui-pos-lemma", "light", async (p) => { await p.click('.modes button[data-mode="pos"]'); await p.fill("#lemma", "arpa"); await go(p); await p.waitForSelector(".hit"); });
-await shoot("ui-collocation", "light", async (p) => { await p.click('.modes button[data-mode="collocation"]'); await p.fill("#q", "kamuy"); await go(p); await p.waitForSelector("table.data"); });
-await shoot("ui-structural", "light", async (p) => { await p.click('.modes button[data-mode="structural"]'); await p.fill("#q", "[upos=NOUN] [upos=NOUN]"); await go(p); await p.waitForSelector(".hit"); });
-await shoot("ui-analytics", "light", async (p) => { await p.click('.modes button[data-mode="analytics"]'); await p.fill("#q", "kamuy"); await go(p); await p.waitForSelector(".analytics-grid"); });
-await shoot("ui-forms", "light", async (p) => { await p.click('.modes button[data-mode="inflection"]'); await p.fill("#q", "arpa"); await go(p); await p.waitForSelector("table.data"); });
+await shoot("ui-word-alt-dark", "dark", async (p) => { await search(p, "pa"); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
+await shoot("ui-word-dark", "dark", async (p) => { await search(p, "arpa"); await p.waitForSelector(".hit"); });
+await shoot("ui-options-open", "light", async (p) => { await p.click("#opts-summary"); await search(p, "rayke"); await p.waitForSelector(".hit"); });
+await shoot("ui-filter-pos", "light", async (p) => { await search(p, "pos:VERB next:=an"); await p.waitForSelector(".hit"); });
+await shoot("ui-phrase", "light", async (p) => { await search(p, "kamuy kor"); await p.waitForSelector(".hit"); });
+await shoot("ui-pattern", "light", async (p) => { await search(p, "[upos=NOUN] [upos=NOUN]"); await p.waitForSelector(".hit"); });
+await shoot("ui-prefix", "light", async (p) => { await search(p, "kamuy*"); await p.waitForSelector(".hit"); });
+await shoot("ui-collocates", "light", async (p) => { await search(p, "kamuy"); await p.waitForSelector(".hit"); await tab(p, "collocates"); await p.waitForSelector("table.data"); });
+await shoot("ui-distribution", "light", async (p) => { await search(p, "kamuy"); await p.waitForSelector(".hit"); await tab(p, "distribution"); await p.waitForSelector(".dist-grid"); });
+await shoot("ui-forms", "light", async (p) => { await search(p, "arpa"); await p.waitForSelector(".hit"); await tab(p, "forms"); await p.waitForSelector("table.data"); });
+// corpus_fts only exists in the production DB — locally this renders the error
+// state, which is still worth eyeballing.
+await shoot("ui-text-ja", "light", async (p) => { await search(p, "神"); await p.waitForSelector(".hit, .empty", { timeout: 4000 }).catch(() => {}); });
 
 await browser.close();
 server.stop();
