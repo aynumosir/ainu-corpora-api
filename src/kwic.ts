@@ -12,6 +12,7 @@
  */
 import { foldToken, normToken, isGlottalMarker } from "./normalize.js";
 import { dialectWhere, type DialectFilter } from "./dialect.js";
+import { sourceSlugsFor } from "./db.js";
 
 function clampLimit(n: number, max = 500): number {
   if (!Number.isFinite(n) || n <= 0) return 0;
@@ -62,6 +63,7 @@ export interface KwicLine {
   dialect: string | null;
   author: string | null;
   uri: string | null;
+  source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
 }
 
 export type NodeSort =
@@ -289,6 +291,9 @@ async function kwicImpl(
     }
   }
 
+  // db.aynu.org source links (empty map when the column is absent — degrade).
+  const slugs = await sourceSlugsFor(db, sentIds);
+
   const ctx = Math.max(0, Math.floor(opts.ctx));
   const sentText = new Map<string, string>();
   for (const n of nodes) sentText.set(n.sentence_id, n.text);
@@ -322,6 +327,7 @@ async function kwicImpl(
       node_text: text.slice(n.char_start, n.char_end),
       right_text: text.slice(n.char_end, n.char_end + 48),
       translation: n.translation, dialect: n.dialect, author: n.author, uri: n.uri,
+      source_slug: slugs.get(n.sentence_id) ?? null,
     };
   });
 

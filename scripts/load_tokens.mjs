@@ -21,7 +21,9 @@ const MIG = new URL("../migrations/0001_tokens.sql", import.meta.url);
 const MIG2 = new URL("../migrations/0002_fold_and_morph.sql", import.meta.url);
 const MIG3 = new URL("../migrations/0003_dialect_levels.sql", import.meta.url);
 const MIG4 = new URL("../migrations/0004_morph_gloss.sql", import.meta.url);
+const MIG5 = new URL("../migrations/0005_source_slug.sql", import.meta.url);
 const SENT = new URL("../build/sentences.jsonl", import.meta.url);
+const SLUGS = new URL("../data/collection_slugs.json", import.meta.url);
 const TOK = new URL(TOK_FILE, import.meta.url);
 const MORPH = new URL("../build/morph_forms.jsonl", import.meta.url);
 const GLOSS = new URL("../build/morph_gloss.jsonl", import.meta.url);
@@ -51,7 +53,7 @@ function chunk(arr, n) {
 }
 
 const SENT_COLS = ["id", "row_order", "text", "translation", "dialect", "author", "collection", "document", "uri",
-  "region", "dialect_path", "dialect_paths"];
+  "region", "dialect_path", "dialect_paths", "source_slug"];
 const TOK_COLS = ["sentence_id", "idx", "surface", "surface_norm", "char_start", "char_end", "script", "is_clitic",
   "lemma", "upos", "xpos", "feats_json", "model_version", "surface_fold"];
 // U+001F (unit separator) wraps each stored dialect path so a hierarchical
@@ -70,10 +72,17 @@ function dialectLevels(r) {
   const dialect_paths = paths.length ? US + paths.join(US) + US : null;
   return { region, dialect_path, dialect_paths };
 }
+// db.aynu.org source record per collection (see migrations/0005_source_slug.sql).
+// Keyed by the corpus collection title (= collection_lv1). Standalone texts
+// (single documents registered without a collection, e.g. prague/kayano-kokkai)
+// carry their title in `doc` instead, so fall back to it only when `col` is null.
+const collectionSlugs = JSON.parse(readFileSync(SLUGS, "utf8"));
+const sourceSlug = (r) =>
+  (r.col != null ? collectionSlugs[r.col] : collectionSlugs[r.doc]) ?? null;
 const sentRow = (r) => {
   const d = dialectLevels(r);
   return [r.id, r.o, r.text, r.tr ?? null, r.dia ?? null, r.au ?? null, r.col ?? null, r.doc ?? null, r.uri ?? null,
-    d.region, d.dialect_path, d.dialect_paths];
+    d.region, d.dialect_path, d.dialect_paths, sourceSlug(r)];
 };
 // POS keys (lem/up/xp/ft/mv) are present in the Phase-3 tokens_pos.jsonl, null otherwise.
 // surface_fold is computed here at load time (NFD diacritic folding can't be done in SQL).
@@ -143,6 +152,9 @@ async function loadTurso() {
   for (const s of ddlStatements(readFileSync(MIG4, "utf8"))) {
     try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
+  for (const s of ddlStatements(readFileSync(MIG5, "utf8"))) {
+    try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
+  }
 
   console.log("dropping bulk-load indexes…");
   await dropBulkIndexes(db);
@@ -204,6 +216,9 @@ async function loadLocal() {
     try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
   for (const s of ddlStatements(readFileSync(MIG4, "utf8"))) {
+    try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
+  }
+  for (const s of ddlStatements(readFileSync(MIG5, "utf8"))) {
     try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
   db.run("DELETE FROM corpus_tokens"); db.run("DELETE FROM sentences");
