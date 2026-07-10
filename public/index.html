@@ -164,6 +164,7 @@
       </select></label>
     <button type="button" class="ghost" id="t-gloss" aria-pressed="false">POS/gloss</button>
     <button type="button" class="ghost" id="t-csv">CSV</button>
+    <button type="button" class="ghost" id="t-json">JSON</button>
   </div>
 
   <div id="intro">
@@ -190,7 +191,7 @@ const LOCAL = ["localhost", "127.0.0.1", "0.0.0.0", ""].includes(location.hostna
 const API = (location.hostname === "corpus.aynu.org" || LOCAL) ? "" : "https://corpus.aynu.org";
 let view = "contexts";           // contexts | collocates | distribution | forms
 let lastKind = "kwic";           // what the last query classified as
-let lastRows = [], lastCols = null;
+let lastRows = [], lastCols = null, lastDist = null;
 const $ = (s) => document.querySelector(s);
 const esc = (s) => (s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -441,12 +442,18 @@ function formsView(data) {
     <table class="data"><tr><th>surface</th><th>lemma</th><th>relation</th><th>number locus</th><th>length</th><th>source</th><th>confidence</th><th>rule</th></tr>${rows}</table>`;
 }
 
-// ─── CSV export ───
-function toCsv() {
+// ─── CSV / JSON export ───
+function exportRows() {
   let header, lines;
   if (view === "collocates" && lastCols) {
     header = ["collocate","upos","freq","total","log_dice","t_score","mi"];
     lines = lastCols.collocates.map((c) => [c.token,c.upos,c.freq,c.total,c.log_dice,c.t_score,c.mi]);
+  } else if (view === "distribution" && lastDist) {
+    header = ["facet","key","count"];
+    lines = [];
+    for (const [facet, rows] of [["dialect", lastDist.dialects], ["author", lastDist.authors],
+                                 ["collection", lastDist.collections], ["upos", lastDist.upos]])
+      for (const r of rows || []) lines.push([facet, r.key, r.count]);
   } else if (view === "forms") {
     header = ["surface","lemma","relation","number_locus","form_length","source","confidence","rule_id"];
     lines = lastRows.map((f) => [f.surface, f.lemma, f.relation, f.number_locus, f.form_length, f.source, f.confidence, f.rule_id]);
@@ -461,13 +468,28 @@ function toCsv() {
     lines = lastRows.map((d) => [d.left_text, d.match_text, d.right_text, d.translation, d.dialect, d.author, d.uri]);
   } else { header = ["text","translation","dialect","author","uri"];
     lines = lastRows.map((d) => [d.text, d.translation, d.dialect, d.author, d.uri]); }
-  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const csv = [header, ...lines].map((r) => r.map(q).join(",")).join("\n");
+  return { header, lines };
+}
+function download(text, type, ext) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = `kampisos-${view === "contexts" ? lastKind : view}-${Date.now()}.csv`; a.click();
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  a.href = url;
+  a.download = `kampisos-${view === "contexts" ? lastKind : view}-${Date.now()}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function toCsv() {
+  const { header, lines } = exportRows();
+  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  download([header, ...lines].map((r) => r.map(q).join(",")).join("\n"), "text/csv", "csv");
+}
+function toJson() {
+  const { header, lines } = exportRows();
+  const rows = lines.map((r) => Object.fromEntries(header.map((k, i) => [k, r[i] ?? null])));
+  download(JSON.stringify(rows, null, 2), "application/json", "json");
 }
 $("#t-csv").addEventListener("click", toCsv);
+$("#t-json").addEventListener("click", toJson);
 $("#t-gloss").addEventListener("click", () => {
   const on = document.body.classList.toggle("gloss");
   $("#t-gloss").setAttribute("aria-pressed", on);
@@ -527,8 +549,8 @@ async function run() {
   if (!isWord && view !== "contexts") setView("contexts");
   $("#status").textContent = q || Object.keys(filters).length ? "Searching…" : "";
   $("#hits").innerHTML = ""; $("#pager").innerHTML = ""; $("#infl").innerHTML = "";
-  $("#t-csv").style.display = "none";
-  lastRows = []; lastCols = null;
+  $("#t-csv").style.display = "none"; $("#t-json").style.display = "none";
+  lastRows = []; lastCols = null; lastDist = null;
   const hasQuery = q || Object.keys(filters).some((k) => k !== "dialect");
   $("#intro").hidden = !!hasQuery;
   $("#toolbar").hidden = !hasQuery;
@@ -545,8 +567,8 @@ async function run() {
       $("#hits").innerHTML = colTable(lastCols);
       done(`${lastCols.collocates?.length || 0} collocates.`);
     } else if (view === "distribution" && isWord) {
-      const data = await get(`/v1/analytics?q=${encodeURIComponent(q)}&match=${$("#match").value}&top=12`);
-      $("#hits").innerHTML = distView(data);
+      lastDist = await get(`/v1/analytics?q=${encodeURIComponent(q)}&match=${$("#match").value}&top=12`);
+      $("#hits").innerHTML = distView(lastDist);
       done("");
     } else if (view === "forms" && isWord) {
       const data = await get(`/v1/inflections?word=${encodeURIComponent(q)}`);
@@ -596,7 +618,8 @@ async function run() {
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
     }
     bindWordClicks();
-    $("#t-csv").style.display = (lastRows.length || lastCols?.collocates?.length) ? "" : "none";
+    const canExport = (lastRows.length || lastCols?.collocates?.length || lastDist?.total) ? "" : "none";
+    $("#t-csv").style.display = canExport; $("#t-json").style.display = canExport;
   } catch (e) {
     done("Error — " + e.message);
   }
