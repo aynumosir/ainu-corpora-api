@@ -49,6 +49,12 @@ test("parsePattern: folds accents in surface constraints", () => {
   expect(parsePattern("[surface=rámat]")).toEqual([{ surface: "ramat" }]);
 });
 
+test("parsePattern: /re/ slots, bare and bracketed", () => {
+  expect(parsePattern("/ech?i/ /^a/")).toEqual([{ regex: "ech?i" }, { regex: "^a" }]);
+  expect(parsePattern("[surface=/ech?i/]")).toEqual([{ regex: "ech?i" }]);
+  expect(parsePattern("/^si/ VERB")).toEqual([{ regex: "^si" }, { upos: "VERB" }]);
+});
+
 test("structural: self-joins idx+1 and binds constraints in alias order", async () => {
   const { db, calls } = fakeDb([[]]);
   await structural(db, { pattern: "[upos=NOUN] [upos=NOUN]", limit: 5 });
@@ -60,6 +66,25 @@ test("structural: empty pattern → [] with no DB call", async () => {
   const { db, calls } = fakeDb([]);
   expect(await structural(db, { pattern: "   ", limit: 5 })).toEqual([]);
   expect(calls.length).toBe(0);
+});
+
+test("structural: regex slots resolve to key IN-lists per position", async () => {
+  const { db, calls } = fakeDb([
+    [{ k: "echi", c: 10 }, { k: "eci=", c: 5 }, { k: "pet", c: 3 }], // vocab for /ech?i/
+    [{ k: "an", c: 100 }, { k: "arpa", c: 50 }, { k: "pet", c: 3 }], // vocab for /^a/
+    [], // main join query
+  ]);
+  await structural(db, { pattern: "/ech?i/ /^a/", limit: 5 });
+  const main = calls[2];
+  expect(main.sql).toContain("t0.surface_fold IN (?,?)");
+  expect(main.sql).toContain("t1.surface_fold IN (?,?)");
+  expect(main.args).toEqual(["echi", "eci=", "an", "arpa", 5]);
+});
+
+test("structural: regex slot with no vocab match → [] without the main query", async () => {
+  const { db, calls } = fakeDb([[{ k: "pet", c: 3 }]]);
+  expect(await structural(db, { pattern: "/zzz/ wa", limit: 5 })).toEqual([]);
+  expect(calls.length).toBe(1); // only the vocab scan ran
 });
 
 test("structural: all-wildcard refuses to scan", async () => {

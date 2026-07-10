@@ -53,6 +53,27 @@ test("prefix match uses folded LIKE", async () => {
   expect(calls[0].args[0]).toBe("kamuy%");
 });
 
+test("match=regex resolves vocab keys then IN-matches the node", async () => {
+  const { db, calls } = fakeDb([
+    [{ k: "echi", c: 3208 }, { k: "eci=", c: 2732 }, { k: "pet", c: 100 }], // vocab scan
+    [], // node query
+  ]);
+  await kwic(db, { q: "^ech?i", ctx: 2, limit: 5, sort: "none", match: "regex", expand: "none" });
+  expect(calls[0].sql).toContain("GROUP BY k ORDER BY c DESC");
+  const nodeCall = calls.find((c) => c.sql.includes("surface_fold IN"));
+  expect(nodeCall).toBeTruthy();
+  expect(nodeCall!.args).toContain("echi");
+  expect(nodeCall!.args).toContain("eci=");
+  expect(nodeCall!.args).not.toContain("pet");
+});
+
+test("match=regex with an invalid pattern rejects (route maps it to 400)", async () => {
+  const { db } = fakeDb([[]]);
+  await expect(
+    kwic(db, { q: "(", ctx: 2, limit: 5, sort: "none", match: "regex", expand: "none" }),
+  ).rejects.toThrow("invalid regex");
+});
+
 test("expand=plural pulls morph_forms then matches the union of keys", async () => {
   const { db, calls } = fakeDb([
     [{ lemma_fold: "arpa", surface_fold: "paye" }], // morph lookup

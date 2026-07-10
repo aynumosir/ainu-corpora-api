@@ -162,15 +162,18 @@ paths:
         Richer than /v1/concordance: each line carries left/node/right TOKEN
         arrays (surface + upos + lemma + xpos + feats + clitic flag) plus plain
         left_text/node_text/right_text. match=fold (default) is accent-insensitive
-        (néa == nea, rámat == ramat). expand=plural also surfaces a verb's plural
-        (e.g. arpa → paye). sort supports l1..l3 / r1..r3 (Nth neighbour),
-        node, dialect, author.
+        (néa == nea, rámat == ramat). match=regex treats q as a word regex over
+        the folded key — case-insensitive, unanchored (use ^ $), e.g. q=ech?i
+        matches eci and echi; resolved against the vocabulary (capped at the
+        1000 most frequent matching word forms). expand=plural also surfaces a
+        verb's plural (e.g. arpa → paye). sort supports l1..l3 / r1..r3 (Nth
+        neighbour), node, dialect, author.
       parameters:
         - { name: q, in: query, required: true, schema: { type: string } }
         - { name: ctx, in: query, schema: { type: integer, default: 6 }, description: context tokens each side }
         - { name: limit, in: query, schema: { type: integer, default: 50 } }
         - { name: offset, in: query, schema: { type: integer, default: 0 }, description: "pagination offset; response carries meta:{total,offset,limit}" }
-        - { name: match, in: query, schema: { type: string, enum: [fold, exact, prefix], default: fold } }
+        - { name: match, in: query, schema: { type: string, enum: [fold, exact, prefix, regex], default: fold } }
         - { name: sort, in: query, schema: { type: string, enum: [none, left, right, l1, l2, l3, r1, r2, r3, node, dialect, author], default: none } }
         - { name: expand, in: query, schema: { type: string, enum: [none, plural, all], default: none }, description: fold in inflected relatives (morph_forms) }
         - { name: upos, in: query, schema: { type: string }, description: constrain the node's POS }
@@ -179,6 +182,7 @@ paths:
         - { name: author, in: query, schema: { type: string } }
       responses:
         "200": { description: "KwicAnnotatedLine[] in data" }
+        "400": { description: "error: missing_query | bad_regex" }
   /v1/collocation:
     get:
       summary: Collocates of a node word, scored by logDice / t-score / MI
@@ -203,7 +207,10 @@ paths:
         Match a sequence of token constraints via idx+1 self-joins. Pattern
         syntax: [upos=VERB] [surface=arpa] [lemma=arpa] [surface=ku.*] (prefix)
         [] (wildcard); bare word → surface, bare ALLCAPS → upos; & joins
-        constraints in one position. Max 6 positions. e.g. [upos=NOUN] [upos=NOUN].
+        constraints in one position. /ech?i/ (bare or [surface=/ech?i/]) is a
+        word regex over the folded key — case-insensitive, unanchored (use ^ $);
+        e.g. pattern=/ech?i/ /^a/ finds eci|echi followed by an a-initial word.
+        Max 6 positions. e.g. [upos=NOUN] [upos=NOUN].
       parameters:
         - { name: pattern, in: query, required: true, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer, default: 50 } }
@@ -211,7 +218,7 @@ paths:
         - { name: author, in: query, schema: { type: string } }
       responses:
         "200": { description: "StructuralLine[] in data (match[] + match_text + left_text/right_text)" }
-        "400": { description: "error: missing_pattern" }
+        "400": { description: "error: missing_pattern | bad_regex" }
   /v1/analytics:
     get:
       summary: Distribution of a node word across dialect/author/collection + POS spread

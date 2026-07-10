@@ -13,6 +13,7 @@
 import { foldToken, normToken, isGlottalMarker } from "./normalize.js";
 import { dialectWhere, type DialectFilter } from "./dialect.js";
 import { sourceSlugsFor } from "./db.js";
+import { regexNodeKeys } from "./regex.js";
 
 function clampLimit(n: number, max = 500): number {
   if (!Number.isFinite(n) || n <= 0) return 0;
@@ -70,7 +71,7 @@ export type NodeSort =
   | "none" | "left" | "right"
   | "l1" | "l2" | "l3" | "r1" | "r2" | "r3"
   | "node" | "dialect" | "author";
-export type KwicMatch = "fold" | "exact" | "prefix";
+export type KwicMatch = "fold" | "exact" | "prefix" | "regex";
 
 interface RawTok {
   sentence_id: string;
@@ -178,7 +179,14 @@ async function buildNodeWhere(
   const keyCol = useFold ? "surface_fold" : "surface_norm";
   const params: unknown[] = [];
   let nodeWhere: string;
-  if (opts.match === "prefix") {
+  if (opts.match === "regex") {
+    // Word regex (/ech?i/): resolved in the Worker against the distinct vocab,
+    // then matched as a key set like fold/expand. Throws BadRegexError → 400.
+    const keys = await regexNodeKeys(db, q, keyCol);
+    if (!keys.length) return null;
+    nodeWhere = `t.${keyCol} IN (${keys.map(() => "?").join(",")})`;
+    params.push(...keys);
+  } else if (opts.match === "prefix") {
     nodeWhere = `t.${keyCol} LIKE ? ESCAPE '\\'`;
     params.push(likeEscape(useFold ? foldToken(q) : normToken(q)) + "%");
   } else if (opts.match === "exact") {

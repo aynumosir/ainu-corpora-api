@@ -123,7 +123,7 @@
 
 <div class="wrap">
   <form id="f" autocomplete="off">
-    <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · 神" autofocus>
+    <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · /ech?i/ · 神" autofocus>
     <button class="go" type="submit">Search</button>
 
     <details class="opts" id="opts"><summary id="opts-summary">Options</summary><div class="panel">
@@ -132,6 +132,7 @@
           <option value="fold">accent-insensitive</option>
           <option value="exact">exact</option>
           <option value="prefix">prefix</option>
+          <option value="regex">regex</option>
         </select></label>
       <label class="opt">expand
         <select id="expand" class="sm"><option value="none">none</option><option value="plural">+ plural</option><option value="all">+ all forms</option></select></label>
@@ -169,7 +170,7 @@
 
   <div id="intro">
     <div class="examples" id="examples"></div>
-    <div class="hint">word · phrase · pos:VERB lemma:arpa next:=an · [upos=NOUN] pattern · kamuy* prefix · "ramat" exact · 日本語 → translations</div>
+    <div class="hint">word · phrase · /ech?i/ /^a/ word regex · pos:VERB lemma:arpa next:=an · [upos=NOUN] pattern · kamuy* prefix · "ramat" exact · 日本語 → translations</div>
   </div>
   <div id="infl"></div>
   <div class="status" id="status"></div>
@@ -211,6 +212,10 @@ function parseQuery(raw) {
   }
   let q = rest.join(" ");
   if (/[぀-ヿ㐀-鿿豈-﫿ｦ-ﾟ]/.test(q)) return { ...out, kind: "text", q };
+  // /ech?i/ — one word regex → KWIC match=regex. Several tokens with a /re/
+  // among them fall through to the pattern kind (regex-slot sequence search).
+  const rex = q.match(/^\/(.+)\/$/);
+  if (rex && !/\s/.test(rex[1])) return { ...out, q: rex[1], match: "regex" };
   if (q.includes("[")) return { ...out, kind: "pattern", q };
   if (Object.keys(out.filters).some((k) => k !== "dialect")) return { ...out, kind: "pos", q };
   const quoted = q.match(/^"(.+)"$/);
@@ -265,6 +270,7 @@ function exampleState(e) {
       let q = p.q || "";
       if (p.match === "prefix") q += "*";
       else if (p.match === "exact") q = `"${q}"`;
+      else if (p.match === "regex") q = `/${q}/`;
       return { q, view: "contexts", opts: { sort: p.sort, expand: p.expand, clitic: p.clitic, dialect: p.dialect } };
     }
     case "pos": {
@@ -544,7 +550,10 @@ async function run() {
   lastKind = kind;
   const limit = $("#limit").value || "50";
   const dialect = filters.dialect || $("#dialect").value.trim();
-  const isWord = kind === "kwic" && !!q;
+  const effMatch = parsed.match || $("#match").value;
+  // A regex query is KWIC-kind but not a single word: collocates/distribution/
+  // forms/inflections need a concrete word, so keep it on the contexts view.
+  const isWord = kind === "kwic" && !!q && effMatch !== "regex";
   // Word views only make sense for a single word; otherwise fall back to contexts.
   if (!isWord && view !== "contexts") setView("contexts");
   $("#status").textContent = q || Object.keys(filters).length ? "Searching…" : "";
@@ -555,8 +564,9 @@ async function run() {
   $("#intro").hidden = !!hasQuery;
   $("#toolbar").hidden = !hasQuery;
   $("#tabs").style.display = isWord ? "" : "none";
-  $("#o-sort").style.display = isWord && view === "contexts" ? "" : "none";
-  $("#t-gloss").style.display = (isWord || kind === "pattern") && view === "contexts" ? "" : "none";
+  // Sort + POS/gloss act on the token-grid contexts, which regex KWIC also renders.
+  $("#o-sort").style.display = kind === "kwic" && !!q && view === "contexts" ? "" : "none";
+  $("#t-gloss").style.display = ((kind === "kwic" && !!q) || kind === "pattern") && view === "contexts" ? "" : "none";
   if (!hasQuery) return;
   try {
     if (view === "collocates" && isWord) {
@@ -577,7 +587,7 @@ async function run() {
       done(`${lastRows.length} related form${lastRows.length === 1 ? "" : "s"}.`);
     } else if (kind === "kwic") {
       const p = new URLSearchParams({ q, limit, offset: $("#offset").value || "0", ctx: "6",
-        sort: $("#sort").value, match: parsed.match || $("#match").value,
+        sort: $("#sort").value, match: effMatch,
         expand: $("#expand").value, clitic: $("#clitic").value });
       if (dialect) p.set("dialect", dialect);
       const j = await getRaw(`/v1/kwic?${p}`);
@@ -585,7 +595,7 @@ async function run() {
       $("#hits").innerHTML = lastRows.length ? lastRows.map((d) => kwicTokRow(d)).join("") : `<div class="empty">No matches.</div>`;
       renderPager(j.meta, lastRows.length);
       done(j.meta?.total ? "" : `${lastRows.length} result${lastRows.length === 1 ? "" : "s"}.`);
-      showInflections(q);
+      if (effMatch !== "regex") showInflections(q);
     } else if (kind === "pos") {
       const p = new URLSearchParams({ limit, window: "34" });
       if (filters.upos) p.set("upos", filters.upos.toUpperCase());

@@ -35,6 +35,7 @@ import { kwic, kwicTotal, inflections, type NodeSort, type KwicMatch } from "./k
 import { collocations, structural, wordAnalytics } from "./analysis.js";
 import { dialectTree } from "./dialect.js";
 import { examplesFor } from "./examples.js";
+import { BadRegexError } from "./regex.js";
 
 type Vars = { db: D1Database };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -212,16 +213,21 @@ app.get("/v1/kwic", async (c) => {
     limit,
     offset,
     sort: (SORTS.includes(sortRaw) ? sortRaw : "none") as NodeSort,
-    match: (["fold", "exact", "prefix"].includes(matchRaw) ? matchRaw : "fold") as KwicMatch,
+    match: (["fold", "exact", "prefix", "regex"].includes(matchRaw) ? matchRaw : "fold") as KwicMatch,
     expand: (["none", "plural", "all"].includes(expandRaw) ? expandRaw : "none") as "none" | "plural" | "all",
     nodeUpos: c.req.query("upos") ?? null,
     clitic: (["any", "only", "exclude"].includes(cliticRaw) ? cliticRaw : "any") as "any" | "only" | "exclude",
     ...dialectParams(c),
     author: c.req.query("author") ?? null,
   };
-  // total runs concurrently with the page fetch (one extra COUNT round-trip).
-  const [lines, total] = await Promise.all([kwic(c.get("db"), opts), kwicTotal(c.get("db"), opts)]);
-  return ok(c, lines, { total, offset, limit });
+  try {
+    // total runs concurrently with the page fetch (one extra COUNT round-trip).
+    const [lines, total] = await Promise.all([kwic(c.get("db"), opts), kwicTotal(c.get("db"), opts)]);
+    return ok(c, lines, { total, offset, limit });
+  } catch (e) {
+    if (e instanceof BadRegexError) return fail(c, 400, "bad_regex", e.message);
+    throw e;
+  }
 });
 
 // ───────────────────────────── /v1/collocation ───────────────────────────── //
@@ -247,16 +253,22 @@ app.get("/v1/collocation", async (c) => {
 
 // ───────────────────────────── /v1/structural (CQL-lite) ───────────────────────────── //
 // Adjacent token-sequence search. e.g. ?pattern=[upos=NOUN] [upos=NOUN]
+// Positions can be word regexes: ?pattern=/ech?i/ /^a/
 app.get("/v1/structural", async (c) => {
   const pattern = c.req.query("pattern") ?? c.req.query("q") ?? "";
   if (!pattern.trim()) return fail(c, 400, "missing_pattern", "pattern is required (e.g. [upos=VERB] [surface==an])");
-  const lines = await structural(c.get("db"), {
-    pattern,
-    limit: intParam(c.req.query("limit"), 50),
-    ...dialectParams(c),
-    author: c.req.query("author") ?? null,
-  });
-  return ok(c, lines);
+  try {
+    const lines = await structural(c.get("db"), {
+      pattern,
+      limit: intParam(c.req.query("limit"), 50),
+      ...dialectParams(c),
+      author: c.req.query("author") ?? null,
+    });
+    return ok(c, lines);
+  } catch (e) {
+    if (e instanceof BadRegexError) return fail(c, 400, "bad_regex", e.message);
+    throw e;
+  }
 });
 
 // ───────────────────────────── /v1/analytics ───────────────────────────── //

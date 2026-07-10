@@ -56,6 +56,9 @@ export const SEARCH_EXAMPLES: SearchExample[] = [
   ex("kwic", "/v1/kwic", "kamuy- (prefix search)",
      "Prefix match: every token starting kamuy- (kamuy, kamuyhu, kamuykar…).",
      { q: "kamuy", match: "prefix", limit: "60" }),
+  ex("kwic", "/v1/kwic", "eci across orthographies (regex)",
+     "Word regex: /ech?i/ matches modern eci and Batchelor-style echi in one search (anchor with ^ $).",
+     { q: "ech?i", match: "regex", limit: "50" }),
 
   // ── POS / grammatical search ──────────────────────────────────────
   ex("pos", "/v1/pos", "Intransitive verbs taking =an",
@@ -83,6 +86,9 @@ export const SEARCH_EXAMPLES: SearchExample[] = [
   ex("structural", "/v1/structural", "a= __ VERB (1SG.A + verb)",
      "First-person clitic a=, any token, then a verb.",
      { pattern: "[surface=a=] [] [upos=VERB]", limit: "50" }),
+  ex("structural", "/v1/structural", "regex word sequence",
+     "Adjacent words each matched by a regex: eci/echi followed by an a-initial word.",
+     { pattern: "/ech?i/ /^a/", limit: "50" }),
   ex("structural", "/v1/structural", "VERB + wa (sequential)",
      "Verb followed by the conjunction wa ‘and/then’.",
      { pattern: "[upos=VERB] wa", limit: "50" }),
