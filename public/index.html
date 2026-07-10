@@ -164,6 +164,7 @@
       </select></label>
     <button type="button" class="ghost" id="t-gloss" aria-pressed="false">POS/gloss</button>
     <button type="button" class="ghost" id="t-csv">CSV</button>
+    <button type="button" class="ghost" id="t-json">JSON</button>
   </div>
 
   <div id="intro">
@@ -441,8 +442,8 @@ function formsView(data) {
     <table class="data"><tr><th>surface</th><th>lemma</th><th>relation</th><th>number locus</th><th>length</th><th>source</th><th>confidence</th><th>rule</th></tr>${rows}</table>`;
 }
 
-// ─── CSV export ───
-function toCsv() {
+// ─── CSV / JSON export ───
+function exportRows() {
   let header, lines;
   if (view === "collocates" && lastCols) {
     header = ["collocate","upos","freq","total","log_dice","t_score","mi"];
@@ -461,13 +462,25 @@ function toCsv() {
     lines = lastRows.map((d) => [d.left_text, d.match_text, d.right_text, d.translation, d.dialect, d.author, d.uri]);
   } else { header = ["text","translation","dialect","author","uri"];
     lines = lastRows.map((d) => [d.text, d.translation, d.dialect, d.author, d.uri]); }
-  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const csv = [header, ...lines].map((r) => r.map(q).join(",")).join("\n");
+  return { header, lines };
+}
+function download(text, type, ext) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = `kampisos-${view === "contexts" ? lastKind : view}-${Date.now()}.csv`; a.click();
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = `kampisos-${view === "contexts" ? lastKind : view}-${Date.now()}.${ext}`; a.click();
+}
+function toCsv() {
+  const { header, lines } = exportRows();
+  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  download([header, ...lines].map((r) => r.map(q).join(",")).join("\n"), "text/csv", "csv");
+}
+function toJson() {
+  const { header, lines } = exportRows();
+  const rows = lines.map((r) => Object.fromEntries(header.map((k, i) => [k, r[i] ?? null])));
+  download(JSON.stringify(rows, null, 2), "application/json", "json");
 }
 $("#t-csv").addEventListener("click", toCsv);
+$("#t-json").addEventListener("click", toJson);
 $("#t-gloss").addEventListener("click", () => {
   const on = document.body.classList.toggle("gloss");
   $("#t-gloss").setAttribute("aria-pressed", on);
@@ -527,7 +540,7 @@ async function run() {
   if (!isWord && view !== "contexts") setView("contexts");
   $("#status").textContent = q || Object.keys(filters).length ? "Searching…" : "";
   $("#hits").innerHTML = ""; $("#pager").innerHTML = ""; $("#infl").innerHTML = "";
-  $("#t-csv").style.display = "none";
+  $("#t-csv").style.display = "none"; $("#t-json").style.display = "none";
   lastRows = []; lastCols = null;
   const hasQuery = q || Object.keys(filters).some((k) => k !== "dialect");
   $("#intro").hidden = !!hasQuery;
@@ -596,7 +609,8 @@ async function run() {
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
     }
     bindWordClicks();
-    $("#t-csv").style.display = (lastRows.length || lastCols?.collocates?.length) ? "" : "none";
+    const canExport = (lastRows.length || lastCols?.collocates?.length) ? "" : "none";
+    $("#t-csv").style.display = canExport; $("#t-json").style.display = canExport;
   } catch (e) {
     done("Error — " + e.message);
   }
