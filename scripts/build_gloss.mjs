@@ -424,6 +424,39 @@ for (const rec of generatedBySurface.values()) {
   }
 }
 
+// Possessed-noun marking (display convention "GLOSS.～の" / "GLOSS.POSS",
+// as already carried by attested rows like macihi 妻.～の). Two sources:
+// generated-form rows with relation=possessed, and unambiguous long-form
+// possessives detected structurally — surface = noun base + hV with vowel
+// harmony (po→poho, re→rehe). Direct dictionary entries (poho 子) get the
+// mark too: the form IS possessive regardless of which row supplied the gloss.
+{
+  const possSurfaces = new Set();
+  for (const f of formRows) {
+    if (String(f.relation) === "possessed") {
+      const sf = f.surface_fold || foldToken(f.surface ?? "");
+      if (sf) possSurfaces.add(sf);
+    }
+  }
+  const isNoun = (r) => !r.pos_display || /^(NOUN|N)\b/.test(r.pos_display);
+  for (const [k, r] of best) {
+    if (!possSurfaces.has(k)) {
+      // structural long form: base + h + harmonic vowel over an attested noun
+      const m = /^(.+[aeiou])h([aeiou])$/.exec(k);
+      if (!m || m[1].slice(-1) !== m[2]) continue;
+      // the base must have a noun reading — the top display entry may be a
+      // homograph (re 'three' NUM hides re 'name' N behind rehe)
+      const baseTop = best.get(m[1]);
+      const baseNounInDb = rows.some((e) =>
+        foldToken(e.lemma ?? "") === m[1] && String(e.category ?? "").startsWith("n"));
+      if ((!baseTop || !isNoun(baseTop)) && !baseNounInDb) continue;
+      if (!isNoun(r)) continue;
+    } else if (!isNoun(r)) continue;
+    if (r.gloss_jp && !r.gloss_jp.includes("～の") && !r.gloss_jp.startsWith("…の")) r.gloss_jp = `${r.gloss_jp}.～の`;
+    if (r.gloss_en && !/\.POSS\b|his\/her|one's/.test(r.gloss_en)) r.gloss_en = `${r.gloss_en}.POSS`;
+  }
+}
+
 // Curated surface aliases backed by morpheme DB entries. These handle common
 // orthographic segmentations where the corpus token is a bare grammatical form
 // or a very frequent source orthography not yet present as DB allomorph.
