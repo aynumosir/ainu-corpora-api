@@ -74,9 +74,9 @@ Adds an accent-folded search key (`surface_fold`) and a morphology table
 
 | Method · Route | Params | Returns |
 |---|---|---|
-| `GET /v1/kwic` | `q` (req), `ctx` (6), `limit` (50), `match=fold\|exact\|prefix` (def `fold`), `sort=none\|l1..l3\|r1..r3\|node\|dialect\|author`, `expand=none\|plural\|all`, `upos`, `clitic=any\|only\|exclude`, `dialect`, `author` | Annotated KWIC: left/node/right **token arrays** (`{i,s,n,p,l,x,f,cl}`) + `*_text`. Clickable words, per-token POS/gloss, accent-insensitive, singular↔plural. |
+| `GET /v1/kwic` | `q` (req), `ctx` (6), `limit` (50), `match=fold\|exact\|prefix\|regex` (def `fold`), `sort=none\|l1..l3\|r1..r3\|node\|dialect\|author`, `expand=none\|plural\|all`, `upos`, `clitic=any\|only\|exclude`, `dialect`, `author` | Annotated KWIC: left/node/right **token arrays** (`{i,s,n,p,l,x,f,cl}`) + `*_text`. Clickable words, per-token POS/gloss, accent-insensitive, singular↔plural. |
 | `GET /v1/collocation` | `q` (req), `window` (5, ≤10), `span=both\|left\|right`, `measure=log_dice\|t_score\|mi`, `minCount` (3), `limit` (50), `dialect`, `author` | `{node,node_freq,corpus_tokens,collocates[]}` with logDice / t-score / MI |
-| `GET /v1/structural` | `pattern` (req), `limit` (50), `dialect`, `author` | CQL-lite sequence search (`[upos=NOUN] [upos=NOUN]`, `[surface=ku.*]`, `[]` wildcard). Adjacent self-joins, ≤6 positions. |
+| `GET /v1/structural` | `pattern` (req), `limit` (50), `dialect`, `author` | CQL-lite sequence search (`[upos=NOUN] [upos=NOUN]`, `[surface=ku.*]`, `[]` wildcard, `/ech?i/` word-regex slots). Adjacent self-joins, ≤6 positions. |
 | `GET /v1/analytics` | `q` (req), `match` (def `fold`), `top` (10) | `{node,total,dialects[],authors[],collections[],upos[]}` distribution |
 | `GET /v1/inflections` | `word` (req) | `{query,fold,forms[]}` — singular↔plural & possessed forms |
 | `GET /v1/examples` | `mode` (optional) | Curated runnable examples `{mode,label,desc,params,path}[]` |
@@ -85,6 +85,15 @@ Adds an accent-folded search key (`surface_fold`) and a morphology table
 insensitive**: pitch acute (`á`) and length circumflex/macron (`â`/`ā`) are
 folded, so `nea` finds `néa` and `ramat` finds `rámat`. `surface` and
 `surface_norm` keep the original for display. See `src/normalize.ts`.
+
+**Word regex.** `match=regex` on `/v1/kwic` (and `/ech?i/` slots in
+`/v1/structural` patterns) treats the query as a regular expression over each
+word's **folded** key: case-insensitive and **unanchored** — `ech?i` matches
+`eci`, `echi`, `eci=`, `hecire`…; anchor with `^`/`$` for word edges. SQLite has
+no `REGEXP`, so the pattern is resolved in the Worker against the distinct
+vocabulary (narrowed by a derived `LIKE` literal when possible) and capped at
+the 1000 most frequent matching forms; an invalid pattern returns `400
+bad_regex`. See `src/regex.ts`.
 
 Rebuild the token layer:
 ```sh

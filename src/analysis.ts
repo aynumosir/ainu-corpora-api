@@ -5,6 +5,7 @@
  */
 import { foldToken, normToken } from "./normalize.js";
 import { dialectWhere, type DialectFilter } from "./dialect.js";
+import { regexNodeKeys } from "./regex.js";
 
 function clampLimit(n: number, max = 500): number {
   if (!Number.isFinite(n) || n <= 0) return 0;
@@ -170,6 +171,7 @@ export interface PatternPos {
   upos?: string | null;
   lemma?: string | null;
   prefix?: string | null;   // folded surface prefix
+  regex?: string | null;    // word regex over the folded key (unanchored, case-insensitive)
 }
 
 /**
@@ -182,6 +184,8 @@ export interface PatternPos {
  *   []                     any token (wildcard)
  *   arpa                   bare word → [surface=arpa]
  *   VERB                   bare ALLCAPS → [upos=VERB]
+ *   /ech?i/                word regex (also [surface=/ech?i/]) — unanchored,
+ *                          case-insensitive, over the folded key (see regex.ts)
  */
 export function parsePattern(src: string): PatternPos[] {
   const positions: PatternPos[] = [];
@@ -191,7 +195,9 @@ export function parsePattern(src: string): PatternPos[] {
   while ((m = re.exec(src)) !== null) {
     if (m[2] != null) {
       const w = m[2];
-      if (/^[A-Z]+$/.test(w)) positions.push({ upos: w });
+      const rx = w.match(/^\/(.+)\/$/);
+      if (rx) positions.push({ regex: rx[1] });
+      else if (/^[A-Z]+$/.test(w)) positions.push({ upos: w });
       else positions.push({ surface: foldToken(w) });
       continue;
     }
@@ -211,7 +217,9 @@ export function parsePattern(src: string): PatternPos[] {
       if (key === "upos" || key === "pos") pos.upos = val.toUpperCase();
       else if (key === "lemma") pos.lemma = val;
       else if (key === "surface" || key === "word") {
-        if (val.endsWith(".*")) pos.prefix = foldToken(val.slice(0, -2));
+        const rx = val.match(/^\/(.+)\/$/);
+        if (rx) pos.regex = rx[1];
+        else if (val.endsWith(".*")) pos.prefix = foldToken(val.slice(0, -2));
         else pos.surface = foldToken(val);
       }
     }
@@ -259,13 +267,25 @@ async function structuralImpl(
   if (positions.length > 6) positions.length = 6; // bound the join depth
 
   const keyCol = useFold ? "surface_fold" : "surface_norm";
+
+  // Resolve regex slots to concrete key lists up front (one vocab scan per
+  // distinct pattern, memoized on the db). An empty resolution can never match.
+  const slotKeys: (string[] | null)[] = [];
+  for (const p of positions) {
+    if (!p.regex) { slotKeys.push(null); continue; }
+    const keys = await regexNodeKeys(db, p.regex, keyCol);
+    if (!keys.length) return [];
+    slotKeys.push(keys);
+  }
+
   const aliases = positions.map((_, i) => `t${i}`);
   const conds: string[] = [];
   const params: unknown[] = [];
-  const posCond = (a: string, p: PatternPos): string[] => {
+  const posCond = (a: string, p: PatternPos, i: number): string[] => {
     const cs: string[] = [];
     if (p.surface) { cs.push(`${a}.${keyCol} = ?`); params.push(useFold ? p.surface : normToken(p.surface)); }
     if (p.prefix) { cs.push(`${a}.${keyCol} LIKE ? ESCAPE '\\'`); params.push(likeEscape(useFold ? p.prefix : normToken(p.prefix)) + "%"); }
+    if (p.regex) { const keys = slotKeys[i]!; cs.push(`${a}.${keyCol} IN (${keys.map(() => "?").join(",")})`); params.push(...keys); }
     if (p.upos) { cs.push(`${a}.upos = ?`); params.push(p.upos.toUpperCase()); }
     if (p.lemma) { cs.push(`${a}.lemma = ?`); params.push(p.lemma); }
     return cs;
@@ -274,10 +294,10 @@ async function structuralImpl(
   // FROM t0 JOIN t1 ON adjacency JOIN t2 … — but build constraints in order so
   // bound params line up with the alias order.
   let from = `corpus_tokens ${aliases[0]}`;
-  conds.push(...posCond(aliases[0], positions[0]));
+  conds.push(...posCond(aliases[0], positions[0], 0));
   for (let i = 1; i < positions.length; i++) {
     from += ` JOIN corpus_tokens ${aliases[i]} ON ${aliases[i]}.sentence_id = ${aliases[0]}.sentence_id AND ${aliases[i]}.idx = ${aliases[0]}.idx + ${i}`;
-    conds.push(...posCond(aliases[i], positions[i]));
+    conds.push(...posCond(aliases[i], positions[i], i));
   }
   from += ` JOIN sentences s ON s.id = ${aliases[0]}.sentence_id`;
   // structural() AND-joins `conds` itself, so add bare clauses (no " AND " prefix).
