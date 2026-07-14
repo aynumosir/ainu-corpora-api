@@ -38,6 +38,36 @@ export interface CorpusRow {
   document: string | null;
   uri: string | null;
   source_slug: string | null;
+  legacy_text: string | null;
+  text_layer: string | null;
+}
+
+export interface TextLayerInfo {
+  legacy_text: string | null;
+  text_layer: string | null;
+}
+
+/** Layer provenance for sentence ids. Older databases return an empty map. */
+export async function textLayersFor(db: D1Database, ids: string[]): Promise<Map<string, TextLayerInfo>> {
+  const map = new Map<string, TextLayerInfo>();
+  const uniq = [...new Set(ids)].filter(Boolean);
+  for (let i = 0; i < uniq.length; i += 200) {
+    const slice = uniq.slice(i, i + 200);
+    try {
+      const { results } = await db
+        .prepare(
+          `SELECT id, legacy_text, text_layer FROM sentences
+           WHERE text_layer IS NOT NULL AND id IN (${slice.map(() => "?").join(",")})`,
+        )
+        .bind(...slice)
+        .all<{ id: string; legacy_text: string | null; text_layer: string | null }>();
+      for (const r of results ?? []) map.set(r.id, { legacy_text: r.legacy_text, text_layer: r.text_layer });
+    } catch (e) {
+      if (/no such column: .*(legacy_text|text_layer)|no such table: sentences/i.test(String(e instanceof Error ? e.message : e))) return map;
+      throw e;
+    }
+  }
+  return map;
 }
 
 /**
@@ -119,7 +149,53 @@ export async function corpusSearch(
   // corpus_fts predates source_slug (and FTS5 columns are frozen), so enrich
   // via the indexed `sentences` PK instead of touching the parity-locked query.
   const slugs = await sourceSlugsFor(db, rows.map((r) => r.id));
-  return rows.map((r) => ({ ...r, source_slug: slugs.get(r.id) ?? null }));
+  return rows.map((r) => ({
+    ...r,
+    source_slug: slugs.get(r.id) ?? null,
+    legacy_text: null,
+    text_layer: null,
+  }));
+}
+
+/** Search the active `sentences.text` layer (modern Bible, source elsewhere).
+ * This is opt-in so the parity-locked `/v1/search` source mode stays intact. */
+export async function corpusLayerSearch(
+  db: D1Database,
+  opts: { query: string; lang: CorpusLang; dialect?: string | null; author?: string | null; limit: number },
+): Promise<CorpusRow[]> {
+  const q = opts.query.trim();
+  if (!q) return [];
+  const pat = likePattern(q.toLowerCase());
+  const params: unknown[] = [];
+  let where: string;
+  if (opts.lang === "ain") {
+    where = `lower(text) LIKE ? ESCAPE '\\'`;
+    params.push(pat);
+  } else if (opts.lang === "jpn") {
+    where = `lower(translation) LIKE ? ESCAPE '\\'`;
+    params.push(pat);
+  } else {
+    where = `(lower(text) LIKE ? ESCAPE '\\' OR lower(translation) LIKE ? ESCAPE '\\')`;
+    params.push(pat, pat);
+  }
+  if (opts.dialect) {
+    where += ` AND instr(dialect, ?) > 0`;
+    params.push(opts.dialect);
+  }
+  if (opts.author) {
+    where += ` AND instr(author, ?) > 0`;
+    params.push(opts.author);
+  }
+  params.push(clampLimit(opts.limit));
+  const { results } = await db
+    .prepare(
+      `SELECT id, text, translation, dialect, author, collection, document, uri,
+              source_slug, legacy_text, text_layer
+       FROM sentences WHERE ${where} ORDER BY row_order LIMIT ?`,
+    )
+    .bind(...params)
+    .all<CorpusRow>();
+  return results ?? [];
 }
 
 export async function getMeta(db: D1Database, key: string): Promise<string | null> {

@@ -26,6 +26,8 @@ from pathlib import Path
 
 import spacy
 
+from corpus_text import ModernTextLayer
+
 KANA = re.compile(r"[゠-ヿㇰ-ㇿｦ-ﾟ぀-ゟ]")
 CYRL = re.compile(r"[Ѐ-ӿ]")
 LATN = re.compile(r"[A-Za-zÀ-ɏ]")
@@ -55,6 +57,7 @@ def main() -> None:
     ap.add_argument("--data", required=True)
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", default="build")
+    ap.add_argument("--modern-layer", help="modern-orthography layer directory (validated against source)")
     ap.add_argument("--procs", type=int, default=6)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--limit", type=int, default=0)
@@ -63,6 +66,7 @@ def main() -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     model_version = Path(args.model).parent.name + "/" + Path(args.model).name
+    layer = ModernTextLayer(args.modern_layer) if args.modern_layer else None
 
     # Read sentences (id + text), preserving order.
     rows: list[tuple[str, str]] = []
@@ -72,7 +76,10 @@ def main() -> None:
             if not line:
                 continue
             r = json.loads(line)
-            rows.append((r["id"], r.get("text") or ""))
+            sid = r["id"]
+            source_text = r.get("text") or ""
+            resolved = layer.resolve(sid, source_text) if layer else None
+            rows.append((sid, resolved.text if resolved else source_text))
             if args.limit and len(rows) >= args.limit:
                 break
 
@@ -102,7 +109,10 @@ def main() -> None:
                 ft.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 n_tok += 1
 
-    print(f"sentences={len(rows)} tokens={n_tok} pos_tagged={n_pos} model={model_version}")
+    if layer and not args.limit:
+        layer.validate_complete()
+    layered = len(layer.applied) if layer else 0
+    print(f"sentences={len(rows)} tokens={n_tok} pos_tagged={n_pos} layered={layered} model={model_version}")
 
 
 if __name__ == "__main__":

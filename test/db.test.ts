@@ -9,6 +9,8 @@
 import { test, expect } from "bun:test";
 import {
   corpusSearch,
+  corpusLayerSearch,
+  textLayersFor,
   tokenFrequency,
   frequencyList,
   stopwordsList,
@@ -170,4 +172,31 @@ test("corpusSearch: source_slug is null when the column is absent (older schema)
   const rows = await corpusSearch(db, { query: "kamuy", lang: "ain", limit: 5 });
   expect(rows.length).toBe(1);
   expect(rows[0].source_slug).toBeNull(); // degraded, not crashed
+});
+
+test("corpusLayerSearch: searches active text and returns layer provenance", async () => {
+  const row = { id: "bible/mat/001#1", text: "Kamuy", legacy_text: "Kamui",
+    text_layer: "modern-orthography-latn@1", translation: null, dialect: null,
+    author: null, collection: "bible", document: null, uri: null, source_slug: null };
+  const { db, calls } = fakeDb([[row]]);
+  const rows = await corpusLayerSearch(db, { query: "kamuy", lang: "ain", limit: 5 });
+  expect(calls[0].sql).toContain("FROM sentences");
+  expect(calls[0].sql).toContain("lower(text) LIKE ?");
+  expect(calls[0].sql).toContain("ORDER BY row_order LIMIT ?");
+  expect(calls[0].args).toEqual(["%kamuy%", 5]);
+  expect(rows[0].legacy_text).toBe("Kamui");
+  expect(rows[0].text_layer).toBe("modern-orthography-latn@1");
+});
+
+test("textLayersFor: degrades to an empty map on an older schema", async () => {
+  const db = {
+    prepare() {
+      const stmt = {
+        bind() { return stmt; },
+        async all() { throw new Error("no such column: legacy_text"); },
+      };
+      return stmt;
+    },
+  } as unknown as D1Database;
+  expect((await textLayersFor(db, ["x#1"])).size).toBe(0);
 });

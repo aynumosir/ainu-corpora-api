@@ -217,6 +217,7 @@ const line = (left: string[], node: string, right: string[], extra: any = {}): K
   right: right.map((n, i) => ({ i, s: n, n, p: null, l: null, x: null, f: null, cl: 0 })),
   left_text: left.join(" "), node_text: node, right_text: right.join(" "),
   translation: null, dialect: extra.dia ?? null, author: null, uri: null, source_slug: null,
+  legacy_text: null, text_layer: null,
 });
 
 test("sort r1 orders by first right token", () => {
@@ -254,4 +255,15 @@ test("KWIC source_slug is null when the sentence has no registered source", asyn
   const { db } = fakeDb([[node], sentToks, []]);
   const out = await kwic(db, { q: "rayke", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
   expect(out[0].source_slug).toBeNull();
+});
+
+test("KWIC lines carry additive text-layer provenance", async () => {
+  const node = { sentence_id: "bible/rev/003#20", idx: 0, char_start: 0, char_end: 8,
+    text: "opopmaw kewtum", translation: null, dialect: null, author: null, uri: null };
+  const sentToks = [tok(0, "opopmaw", { upos: "NOUN" }), tok(1, "kewtum")];
+  const layer = [{ id: node.sentence_id, legacy_text: "opopmau keutum", text_layer: "modern-orthography-latn@1" }];
+  const { db } = fakeDb([[node], sentToks, [], layer]);
+  const out = await kwic(db, { q: "opopmaw", ctx: 1, limit: 5, sort: "none", match: "exact", expand: "none" });
+  expect(out[0].legacy_text).toBe("opopmau keutum");
+  expect(out[0].text_layer).toBe("modern-orthography-latn@1");
 });
