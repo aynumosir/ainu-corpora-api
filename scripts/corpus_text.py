@@ -16,6 +16,7 @@ class ResolvedText:
     text: str
     legacy_text: str | None
     text_layer: str | None
+    text_layer_status: str | None
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,17 @@ class ModernTextLayer:
         self.entries: dict[str, _LayerEntry] = {}
         self.applied: set[str] = set()
         layer_ids: set[str] = set()
+
+        manifest_path = self.root / "manifest.yaml"
+        if not manifest_path.is_file():
+            raise ValueError(f"missing layer manifest: {manifest_path}")
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("schema") != 1:
+            raise ValueError("unsupported layer manifest schema")
+        self.status = manifest.get("status")
+        if self.status not in {"provisional", "reviewed"}:
+            raise ValueError(f"invalid layer status: {self.status!r}")
+        manifest_id = f"{manifest.get('layer')}@{manifest.get('version')}"
 
         paths = sorted(self.root.glob("*/*.yaml"))
         if not paths:
@@ -61,18 +73,20 @@ class ModernTextLayer:
         if len(layer_ids) != 1:
             raise ValueError(f"mixed layer identities: {sorted(layer_ids)}")
         self.layer_id = next(iter(layer_ids))
+        if self.layer_id != manifest_id:
+            raise ValueError(f"manifest identity {manifest_id} differs from {self.layer_id}")
 
     def resolve(self, sentence_id: str, source_text: str) -> ResolvedText:
         entry = self.entries.get(sentence_id)
         if entry is None:
-            return ResolvedText(source_text, None, None)
+            return ResolvedText(source_text, None, None, None)
         if entry.source != source_text:
             raise ValueError(
                 f"layer/source mismatch for {sentence_id}: "
                 f"layer={entry.source!r}, corpus={source_text!r}"
             )
         self.applied.add(sentence_id)
-        return ResolvedText(entry.modern, source_text, self.layer_id)
+        return ResolvedText(entry.modern, source_text, self.layer_id, self.status)
 
     def validate_complete(self) -> None:
         missing = sorted(self.entries.keys() - self.applied)

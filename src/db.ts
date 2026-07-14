@@ -40,11 +40,13 @@ export interface CorpusRow {
   source_slug: string | null;
   legacy_text: string | null;
   text_layer: string | null;
+  text_layer_status: string | null;
 }
 
 export interface TextLayerInfo {
   legacy_text: string | null;
   text_layer: string | null;
+  text_layer_status: string | null;
 }
 
 /** Layer provenance for sentence ids. Older databases return an empty map. */
@@ -56,14 +58,18 @@ export async function textLayersFor(db: D1Database, ids: string[]): Promise<Map<
     try {
       const { results } = await db
         .prepare(
-          `SELECT id, legacy_text, text_layer FROM sentences
+          `SELECT id, legacy_text, text_layer, text_layer_status FROM sentences
            WHERE text_layer IS NOT NULL AND id IN (${slice.map(() => "?").join(",")})`,
         )
         .bind(...slice)
-        .all<{ id: string; legacy_text: string | null; text_layer: string | null }>();
-      for (const r of results ?? []) map.set(r.id, { legacy_text: r.legacy_text, text_layer: r.text_layer });
+        .all<{ id: string; legacy_text: string | null; text_layer: string | null; text_layer_status: string | null }>();
+      for (const r of results ?? []) map.set(r.id, {
+        legacy_text: r.legacy_text,
+        text_layer: r.text_layer,
+        text_layer_status: r.text_layer_status,
+      });
     } catch (e) {
-      if (/no such column: .*(legacy_text|text_layer)|no such table: sentences/i.test(String(e instanceof Error ? e.message : e))) return map;
+      if (/no such column: .*(legacy_text|text_layer|text_layer_status)|no such table: sentences/i.test(String(e instanceof Error ? e.message : e))) return map;
       throw e;
     }
   }
@@ -154,6 +160,7 @@ export async function corpusSearch(
     source_slug: slugs.get(r.id) ?? null,
     legacy_text: null,
     text_layer: null,
+    text_layer_status: null,
   }));
 }
 
@@ -190,7 +197,7 @@ export async function corpusLayerSearch(
   const { results } = await db
     .prepare(
       `SELECT id, text, translation, dialect, author, collection, document, uri,
-              source_slug, legacy_text, text_layer
+              source_slug, legacy_text, text_layer, text_layer_status
        FROM sentences WHERE ${where} ORDER BY row_order LIMIT ?`,
     )
     .bind(...params)

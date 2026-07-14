@@ -93,6 +93,14 @@
   .meta .src { color: var(--muted); margin-left: auto; }
   .meta .src a { color: var(--link); text-decoration: none; }
   .row-sent { font-family: var(--mono); font-size: 14.5px; }
+  .layer-notice { margin: 12px 0 0; padding: 9px 12px; border: 1px solid var(--line);
+    border-radius: 8px; color: var(--muted); background: var(--panel); font-size: 12px; }
+  .layer-notice b { color: var(--accent); }
+  .variant-row { display: grid; grid-template-columns: max-content 1fr; gap: 8px; margin-top: 6px;
+    padding: 6px 9px; border-left: 3px solid var(--bar); background: var(--accent-soft);
+    color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .variant-label { color: var(--accent); font-family: var(--ui); font-size: 10px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
   .empty { color: var(--muted); padding: 30px 4px; }
   /* Tables (collocates / distribution / forms) */
   table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
@@ -121,6 +129,7 @@
 </div></header>
 
 <div class="wrap">
+  <div class="layer-notice"><b>Bible display:</b> modern orthography is available immediately as a provisional transcription. Each result keeps the reviewed 1897 traditional source transcription as an alternative.</div>
   <form id="f" autocomplete="off">
     <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · /ech?i/ · 神" autofocus>
     <button class="go" type="submit">Search</button>
@@ -258,6 +267,11 @@ function src(d) {
   const label = [d.dialect, d.author].filter(Boolean).join(" · ");
   return d.uri ? `<a href="${esc(d.uri)}" target="_blank">${esc(label || "source")}</a>` : esc(label);
 }
+function sourceVariant(d) {
+  if (!d.legacy_text) return "";
+  const status = d.text_layer_status ? ` · ${d.text_layer_status}` : "";
+  return `<div class="variant-row"><span class="variant-label">1897 traditional source</span><span>${esc(d.legacy_text)}</span><span class="variant-label">Modern layer</span><span>${esc(d.text_layer || "modern orthography")}${esc(status)}</span></div>`;
+}
 
 // ─── examples (empty-state chips, from /v1/examples) ───
 // The API's examples are per-endpoint; map each onto the one-box syntax so the
@@ -346,13 +360,13 @@ function kwicTokRow(d, badge) {
   const R = (d.right||[]).map((t) => tokHtml(t, false)).join(" ");
   return `<div class="hit"><div class="kwic">
       <span class="l">${L}</span><span class="n">${N}</span><span class="r">${R}</span>
-    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div></div>`;
+    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`;
 }
 // classic string KWIC for grammar-filter results (left/node/right strings)
 function kwicStrRow(d, badge) {
   return `<div class="hit"><div class="kwic">
       <span class="l">${esc(d.left)}</span><span class="n">${esc(d.node)}</span><span class="r">${esc(d.right)}</span>
-    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div></div>`;
+    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`;
 }
 
 function bindWordClicks() {
@@ -619,10 +633,10 @@ async function run() {
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
     } else { // text
-      lastRows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=any&limit=${encodeURIComponent(limit)}${dialect ? `&dialect=${encodeURIComponent(dialect)}` : ""}`);
+      lastRows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=any&orthography=modern&limit=${encodeURIComponent(limit)}${dialect ? `&dialect=${encodeURIComponent(dialect)}` : ""}`);
       $("#hits").innerHTML = lastRows.length ? lastRows.map((d) =>
         `<div class="hit"><div class="row-sent">${esc(d.text)}</div>
-          <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
+          <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
     }

@@ -11,6 +11,18 @@ from corpus_text import ModernTextLayer  # noqa: E402
 
 class ModernTextLayerTest(unittest.TestCase):
     def make_layer(self, root: Path) -> Path:
+        (root / "manifest.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "schema": 1,
+                    "layer": "modern-orthography-latn",
+                    "version": 1,
+                    "status": "provisional",
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
         path = root / "mat" / "001.yaml"
         path.parent.mkdir(parents=True)
         path.write_text(
@@ -37,6 +49,7 @@ class ModernTextLayerTest(unittest.TestCase):
             self.assertEqual(resolved.text, "Kamuy")
             self.assertEqual(resolved.legacy_text, "Kamui")
             self.assertEqual(resolved.text_layer, "modern-orthography-latn@1")
+            self.assertEqual(resolved.text_layer_status, "provisional")
             layer.validate_complete()
 
     def test_rejects_stale_source(self):

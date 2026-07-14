@@ -11,7 +11,7 @@ Run (no torch needed — tokenization only):
     scripts/build_tokens.py --data ../ainu-corpora/data.jsonl --out build
 
 Outputs (JSONL, short keys to keep the files small):
-  build/sentences.jsonl  {id,o,text,tr,dia,au,col,doc,uri,lg,ly}
+  build/sentences.jsonl  {id,o,text,tr,dia,au,col,doc,uri,lg,ly,ls}
   build/tokens.jsonl     {s,i,surf,norm,a,b,sc,cl}
 """
 from __future__ import annotations
@@ -86,6 +86,7 @@ def main() -> None:
                 "doc": r.get("document"), "uri": r.get("uri"),
                 "lg": resolved.legacy_text if resolved else None,
                 "ly": resolved.text_layer if resolved else None,
+                "ls": resolved.text_layer_status if resolved else None,
                 "d1": r.get("dialect_lv1") or [],
                 "d2": r.get("dialect_lv2") or [],
                 "d3": r.get("dialect_lv3") or [],

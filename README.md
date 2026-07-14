@@ -31,7 +31,7 @@ also travels in the body so non-URL consumers can assert it.
 | Method · Route | Params | Returns |
 |---|---|---|
 | `GET /health` | — | `{ ok, service }` |
-| `GET /v1/search` | `q` (required), `lang=ain\|jpn\|any` (def `any`), `orthography=source\|modern` (def `source`), `dialect`, `author`, `limit` (def 20) | `CorpusRow[]`; modern mode also returns `legacy_text` and `text_layer` provenance |
+| `GET /v1/search` | `q` (required), `lang=ain\|jpn\|any` (def `any`), `orthography=source\|modern` (def `source`), `dialect`, `author`, `limit` (def 20) | `CorpusRow[]`; modern mode also returns source text and layer provenance |
 | `GET /v1/stats` | — | `{ sentences, top_dialects }` (precomputed) |
 | `GET /v1/freq/word` | `token` (**already normalized**) | `{ token, found, count, is_stopword, rank }` |
 | `GET /v1/freq/list` | `limit` (def 100), `offset` (def 0), `includeStopwords` (def false), `minCount` (def 1) | `{ token, count, is_stopword }[]` |
@@ -61,13 +61,14 @@ offsets. 1,307,768 tokens are POS-tagged (`combined_enriched/model-best`, UD UPO
 surface/offset but NULL POS. POS is **machine-tagged, not gold** (`model_version`
 recorded per token).
 
-The Bible's active token/KWIC text is the latest
+The Bible's active token/KWIC text is the **provisional**
 `modern-orthography-latn@1` sidecar from `ainu-corpora-annotations`. The final
-reviewed 1897 transcription remains available as `legacy_text`; all other
+reviewed 1897 source transcription remains available as `legacy_text`; all other
 collections continue to use their source text. Plain `/v1/search` retains its
 historical source-text behavior. Opt into the active modern text with
-`orthography=modern`. Token endpoints return `text_layer` and `legacy_text`
-when a sidecar is active.
+`orthography=modern`. Token endpoints return `text_layer`, `text_layer_status`,
+and `legacy_text` when a sidecar is active. The public UI displays modern Bible
+text immediately and places the 1897 source directly beneath each result.
 
 | Method · Route | Params | Returns |
 |---|---|---|

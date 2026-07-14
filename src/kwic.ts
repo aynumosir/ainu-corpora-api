@@ -67,6 +67,7 @@ export interface KwicLine {
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
   legacy_text: string | null; // reviewed source when `text` is an additive layer
   text_layer: string | null;  // e.g. modern-orthography-latn@1
+  text_layer_status: string | null; // provisional or reviewed
 }
 
 export type NodeSort =
@@ -344,6 +345,7 @@ async function kwicImpl(
       source_slug: slugs.get(n.sentence_id) ?? null,
       legacy_text: layer?.legacy_text ?? null,
       text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
     };
   });
 

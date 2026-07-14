@@ -31,6 +31,7 @@ export interface ConcordanceLine {
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
   legacy_text: string | null;
   text_layer: string | null;
+  text_layer_status: string | null;
 }
 
 export type SortMode = "none" | "left" | "right";
@@ -113,6 +114,7 @@ export async function concordance(
       source_slug: slugs.get(r.sentence_id) ?? null,
       legacy_text: layer?.legacy_text ?? null,
       text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
     };
   });
 
@@ -203,6 +205,7 @@ export async function posSearch(
       source_slug: slugs.get(r.sentence_id) ?? null,
       legacy_text: layer?.legacy_text ?? null,
       text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
     };
   });
 }
