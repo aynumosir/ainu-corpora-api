@@ -37,6 +37,8 @@ import { collocations, structural, wordAnalytics } from "./analysis.js";
 import { dialectTree } from "./dialect.js";
 import { examplesFor } from "./examples.js";
 import { BadRegexError } from "./regex.js";
+import { selectUnseededWords } from "./unseeded.js";
+import { unseededSnapshot } from "./unseeded-data.js";
 
 type Vars = { db: D1Database };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -155,6 +157,33 @@ app.get("/v1/stopword", async (c) => {
 app.get("/v1/candidates", async (c) =>
   ok(c, await vocabCandidates(c.get("db"), intParam(c.req.query("minCount"), 1))),
 );
+
+// ───────────────────────────── /v1/unseeded ───────────────────────────── //
+// Reviewed corpus-wide inventory for MDB lexical and analysis work.
+app.get("/v1/unseeded", (c) => {
+  const result = selectUnseededWords(unseededSnapshot, {
+    q: c.req.query("q") ?? null,
+    lookupStatus: c.req.query("lookup_status") ?? null,
+    reviewDisposition: c.req.query("review_disposition") ?? null,
+    region: c.req.query("region") ?? null,
+    minCount: intParam(c.req.query("min_count"), 0),
+    minCollections: intParam(c.req.query("min_collections"), 0),
+    limit: intParam(c.req.query("limit"), 50),
+    offset: intParam(c.req.query("offset"), 0),
+  });
+  return ok(c, result.words, {
+    total: result.total,
+    offset: result.offset,
+    limit: result.limit,
+    snapshot: unseededSnapshot.metadata,
+  });
+});
+
+app.get("/v1/unseeded/:form", (c) => {
+  const form = c.req.param("form").trim().toLocaleLowerCase();
+  const word = unseededSnapshot.byForm.get(form);
+  return word ? ok(c, word, { snapshot: unseededSnapshot.metadata }) : fail(c, 404, "unknown_form", `no unseeded form: ${form}`);
+});
 
 // ───────────────────────────── /v1/concordance (KWIC) ───────────────────────────── //
 // Keyword-in-context over corpus_tokens. Node matches surface_norm (exact|prefix);
