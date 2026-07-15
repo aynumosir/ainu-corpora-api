@@ -136,6 +136,35 @@ bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADV
 # migrations/0002..0006 are applied automatically by the loader.
 ```
 
+## Unseeded corpus words
+
+An unseeded corpus word is a recurring Latin-script token that cannot reach an
+MDB gloss through its surface, generated-form lemma, tagger lemma, registered
+lexical equivalence, or context-licensed conditioned form. The export includes
+source and dialect distributions plus translated examples for lexical review.
+
+The default export requires attestations in two collections. This threshold
+prioritizes forms shared across independent sources while retaining their
+dialect labels and original spellings.
+
+```sh
+bun run export:unseeded -- \
+  --db=build/corpus.db \
+  --equivalences=../ainu-morpheme-database/lexeme_db/lemma_equivalences.json \
+  --reviews=../ainu-morpheme-database/morpheme_db/seed/bible_unglossed_reviews.json \
+  --out=data/unseeded_words.tsv \
+  --min-count=5 \
+  --min-collections=2
+```
+
+`a=ysamka` and fused `aysamka` resolve to `isamka` when the conditioned rule is
+registered and `isamka` has a gloss. An isolated `ysamka` remains in the export.
+Lexical equivalences apply only to forms listed in the registry, preserving
+distinctions such as `suop` and `suwop`.
+
+Existing Bible review decisions are copied into matching rows. Accepted MDB
+entries disappear from the next export once their glosses are rebuilt.
+
 ## Develop
 
 ```sh
