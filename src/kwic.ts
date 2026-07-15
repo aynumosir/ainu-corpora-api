@@ -12,7 +12,7 @@
  */
 import { foldToken, normToken, isGlottalMarker } from "./normalize.js";
 import { dialectWhere, type DialectFilter } from "./dialect.js";
-import { sourceSlugsFor } from "./db.js";
+import { sourceSlugsFor, textLayersFor } from "./db.js";
 import { regexNodeKeys } from "./regex.js";
 
 function clampLimit(n: number, max = 500): number {
@@ -65,6 +65,9 @@ export interface KwicLine {
   author: string | null;
   uri: string | null;
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
+  legacy_text: string | null; // reviewed source when `text` is an additive layer
+  text_layer: string | null;  // e.g. modern-orthography-latn@1
+  text_layer_status: string | null; // provisional or reviewed
 }
 
 export type NodeSort =
@@ -300,7 +303,10 @@ async function kwicImpl(
   }
 
   // db.aynu.org source links (empty map when the column is absent — degrade).
-  const slugs = await sourceSlugsFor(db, sentIds);
+  const [slugs, layers] = await Promise.all([
+    sourceSlugsFor(db, sentIds),
+    textLayersFor(db, sentIds),
+  ]);
 
   const ctx = Math.max(0, Math.floor(opts.ctx));
   const sentText = new Map<string, string>();
@@ -328,6 +334,7 @@ async function kwicImpl(
       right.push(toTok(allToks[j]));
     }
     const text = n.text ?? "";
+    const layer = layers.get(n.sentence_id);
     return {
       sentence_id: n.sentence_id,
       left, node: nodeToks, right,
@@ -336,6 +343,9 @@ async function kwicImpl(
       right_text: text.slice(n.char_end, n.char_end + 48),
       translation: n.translation, dialect: n.dialect, author: n.author, uri: n.uri,
       source_slug: slugs.get(n.sentence_id) ?? null,
+      legacy_text: layer?.legacy_text ?? null,
+      text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
     };
   });
 

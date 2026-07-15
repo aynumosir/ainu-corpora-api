@@ -22,6 +22,7 @@ import type { Env } from "./types.js";
 import { LibsqlDb } from "./libsql.js";
 import {
   corpusSearch,
+  corpusLayerSearch,
   getMeta,
   tokenFrequency,
   frequencyList,
@@ -92,7 +93,12 @@ app.get("/v1/search", async (c) => {
   if (!q.trim()) return fail(c, 400, "missing_query", "q is required");
   const langRaw = c.req.query("lang") ?? "any";
   if (!["ain", "jpn", "any"].includes(langRaw)) return fail(c, 400, "bad_lang", "lang must be ain|jpn|any");
-  const rows = await corpusSearch(c.get("db"), {
+  const orthography = c.req.query("orthography") ?? "source";
+  if (!["source", "modern"].includes(orthography)) {
+    return fail(c, 400, "bad_orthography", "orthography must be source|modern");
+  }
+  const search = orthography === "modern" ? corpusLayerSearch : corpusSearch;
+  const rows = await search(c.get("db"), {
     query: q,
     lang: langRaw as CorpusLang,
     dialect: c.req.query("dialect") ?? null,

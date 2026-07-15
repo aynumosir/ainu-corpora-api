@@ -4,3 +4,5 @@ dist/
 .dev.vars
 *.log
 build/
+__pycache__/
+*.py[cod]

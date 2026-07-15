@@ -65,6 +65,7 @@ await shoot("ui-word-gloss", "light", async (p) => { await search(p, "rayke"); a
 // Homograph alternates: `pa` displays NOUN “head” with alt PL / mouth (gloss mode).
 await shoot("ui-word-alt-dark", "dark", async (p) => { await search(p, "pa"); await p.waitForSelector(".hit"); await p.click("#t-gloss"); });
 await shoot("ui-word-dark", "dark", async (p) => { await search(p, "arpa"); await p.waitForSelector(".hit"); });
+await shoot("ui-bible-source", "light", async (p) => { await search(p, "opopmaw"); await p.waitForSelector(".variant-row"); });
 await shoot("ui-options-open", "light", async (p) => { await p.click("#opts-summary"); await search(p, "rayke"); await p.waitForSelector(".hit"); });
 await shoot("ui-filter-pos", "light", async (p) => { await search(p, "pos:VERB next:=an"); await p.waitForSelector(".hit"); });
 await shoot("ui-phrase", "light", async (p) => { await search(p, "kamuy kor"); await p.waitForSelector(".hit"); });

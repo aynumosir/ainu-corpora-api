@@ -31,7 +31,7 @@ also travels in the body so non-URL consumers can assert it.
 | Method · Route | Params | Returns |
 |---|---|---|
 | `GET /health` | — | `{ ok, service }` |
-| `GET /v1/search` | `q` (required), `lang=ain\|jpn\|any` (def `any`), `dialect`, `author`, `limit` (def 20) | `CorpusRow[]` — `{id,text,translation,dialect,author,collection,document,uri,source_slug}` |
+| `GET /v1/search` | `q` (required), `lang=ain\|jpn\|any` (def `any`), `orthography=source\|modern` (def `source`), `dialect`, `author`, `limit` (def 20) | `CorpusRow[]`; modern mode also returns source text and layer provenance |
 | `GET /v1/stats` | — | `{ sentences, top_dialects }` (precomputed) |
 | `GET /v1/freq/word` | `token` (**already normalized**) | `{ token, found, count, is_stopword, rank }` |
 | `GET /v1/freq/list` | `limit` (def 100), `offset` (def 0), `includeStopwords` (def false), `minCount` (def 1) | `{ token, count, is_stopword }[]` |
@@ -53,13 +53,22 @@ credentials by design).
 
 ## Token layer — KWIC + POS (Phases 1–3)
 
-Backed by `sentences` + `corpus_tokens` (migrations/0001_tokens.sql): 196,184
-sentences → 1,679,732 tokens, tokenized with the ainu-morpheme-tagger spaCy
+Backed by `sentences` + `corpus_tokens` (migrations/0001_tokens.sql): 210,204
+sentences → 1,776,902 tokens, tokenized with the ainu-morpheme-tagger spaCy
 `ain` tokenizer (so clitics `ku=`/`a=`/`=an` are their own tokens) with char
-offsets. 1.26M tokens are POS-tagged (`combined_enriched/model-best`, UD UPOS),
+offsets. 1,307,768 tokens are POS-tagged (`combined_enriched/model-best`, UD UPOS),
 **Latin-script only** (the model is Roman-trained); non-Latin rows keep
 surface/offset but NULL POS. POS is **machine-tagged, not gold** (`model_version`
 recorded per token).
+
+The Bible's active token/KWIC text is the **provisional**
+`modern-orthography-latn@1` sidecar from `ainu-corpora-annotations`. The final
+reviewed 1897 source transcription remains available as `legacy_text`; all other
+collections continue to use their source text. Plain `/v1/search` retains its
+historical source-text behavior. Opt into the active modern text with
+`orthography=modern`. Token endpoints return `text_layer`, `text_layer_status`,
+and `legacy_text` when a sidecar is active. The public UI displays modern Bible
+text immediately and places the 1897 source directly beneath each result.
 
 | Method · Route | Params | Returns |
 |---|---|---|
@@ -98,11 +107,13 @@ bad_regex`. See `src/regex.ts`.
 Rebuild the token layer:
 ```sh
 # 1. tokenize (light, no torch):
-PYTHONPATH=../ainu-morpheme-tagger uv run --python 3.12 --with "spacy>=3.8.4" --with "numpy<2" --with click --no-project \
-  scripts/build_tokens.py --data ../ainu-corpora/data.jsonl --out build
+PYTHONPATH=../ainu-morpheme-tagger uv run --python 3.12 --with "spacy>=3.8.4" --with "numpy<2" --with pyyaml --with click --no-project \
+  scripts/build_tokens.py --data ../ainu-corpora/data.jsonl --out build \
+  --modern-layer ../ainu-corpora-annotations/layers/bible-modern-latn
 # 2. POS-tag (CNN, CPU) — run from the tagger repo so lookups/ resolve:
 #    (cd ../ainu-morpheme-tagger && PYTHONPATH=. .venv/bin/python ../ainu-corpora-api/scripts/tag_pos.py \
 #       --data ../ainu-corpora/data.jsonl --model training/combined_enriched/model-best \
+#       --modern-layer ../ainu-corpora-annotations/layers/bible-modern-latn \
 #       --out ../ainu-corpora-api/build --procs 6)
 # 3. load (local dry-run, then Turso):
 bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl          # local build/corpus.db + validation
@@ -122,7 +133,7 @@ bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADV
 #   - loads build/morph_gloss.jsonl into morph_gloss (if present), and
 #   - joins data/collection_slugs.json (collection title → db.aynu.org source
 #     record slug) into sentences.source_slug, exposed on search/KWIC lines.
-# migrations/0002..0005 are applied automatically by the loader.
+# migrations/0002..0006 are applied automatically by the loader.
 ```
 
 ## Develop

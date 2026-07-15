@@ -34,6 +34,9 @@ components:
         document: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug (https://db.aynu.org/sources/<slug>); null when the collection has no registered source" }
+        legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when text is an additive modern layer" }
+        text_layer: { type: string, nullable: true, example: "modern-orthography-latn@1" }
+        text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }
     KwicLine:
       type: object
       properties:
@@ -46,6 +49,9 @@ components:
         author: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
+        legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when a layer is active" }
+        text_layer: { type: string, nullable: true }
+        text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }
     PosLine:
       allOf:
         - $ref: "#/components/schemas/KwicLine"
@@ -96,6 +102,9 @@ components:
         author: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
+        legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when a layer is active" }
+        text_layer: { type: string, nullable: true }
+        text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }
     Collocate:
       type: object
       properties:
@@ -117,6 +126,7 @@ paths:
       parameters:
         - { name: q, in: query, required: true, schema: { type: string } }
         - { name: lang, in: query, schema: { type: string, enum: [ain, jpn, any], default: any } }
+        - { name: orthography, in: query, schema: { type: string, enum: [source, modern], default: source } }
         - { name: dialect, in: query, schema: { type: string } }
         - { name: author, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }

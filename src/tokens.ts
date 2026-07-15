@@ -6,7 +6,7 @@
  * the personal clitics `ku=`/`a=`/`=an` are their own tokens — which is what
  * makes adjacency queries ("VERB followed by =an") meaningful.
  */
-import { sourceSlugsFor } from "./db.js";
+import { sourceSlugsFor, textLayersFor } from "./db.js";
 
 function clampLimit(n: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
@@ -29,6 +29,9 @@ export interface ConcordanceLine {
   author: string | null;
   uri: string | null;
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
+  legacy_text: string | null;
+  text_layer: string | null;
+  text_layer_status: string | null;
 }
 
 export type SortMode = "none" | "left" | "right";
@@ -92,11 +95,13 @@ export async function concordance(
                LIMIT ?`;
   params.push(clampLimit(opts.limit));
   const { results } = await db.prepare(sql).bind(...params).all<TokRow>();
-  const slugs = await sourceSlugsFor(db, (results ?? []).map((r) => r.sentence_id));
+  const ids = (results ?? []).map((r) => r.sentence_id);
+  const [slugs, layers] = await Promise.all([sourceSlugsFor(db, ids), textLayersFor(db, ids)]);
 
   const w = Math.max(0, Math.floor(opts.window));
   const lines: ConcordanceLine[] = (results ?? []).map((r) => {
     const text = r.text ?? "";
+    const layer = layers.get(r.sentence_id);
     return {
       sentence_id: r.sentence_id,
       left: text.slice(Math.max(0, r.a - w), r.a),
@@ -107,6 +112,9 @@ export async function concordance(
       author: r.author,
       uri: r.uri,
       source_slug: slugs.get(r.sentence_id) ?? null,
+      legacy_text: layer?.legacy_text ?? null,
+      text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
     };
   });
 
@@ -175,12 +183,14 @@ export async function posSearch(
                LIMIT ?`;
   params.push(clampLimit(opts.limit));
   const { results } = await db.prepare(sql).bind(...params).all<PosRow>();
-  const slugs = await sourceSlugsFor(db, (results ?? []).map((r) => r.sentence_id));
+  const ids = (results ?? []).map((r) => r.sentence_id);
+  const [slugs, layers] = await Promise.all([sourceSlugsFor(db, ids), textLayersFor(db, ids)]);
 
   const w = Math.max(0, Math.floor(opts.window));
   return (results ?? []).map((r) => {
     const text = r.text ?? "";
     const nodeEnd = r.nb ?? r.b; // span node..neighbour when adjacency used
+    const layer = layers.get(r.sentence_id);
     return {
       sentence_id: r.sentence_id,
       left: text.slice(Math.max(0, r.a - w), r.a),
@@ -193,6 +203,9 @@ export async function posSearch(
       author: r.author,
       uri: r.uri,
       source_slug: slugs.get(r.sentence_id) ?? null,
+      legacy_text: layer?.legacy_text ?? null,
+      text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
     };
   });
 }
