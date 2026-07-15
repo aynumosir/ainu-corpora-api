@@ -2,9 +2,9 @@
 /**
  * Export recurring corpus words that cannot reach an MDB gloss.
  *
- * A token is resolved when its surface, generated-form lemma, tagger lemma,
- * lexical equivalence, or context-licensed conditioned form has a gloss.
- * Remaining forms are grouped with source, dialect, and translated examples.
+ * A token is resolved when its surface, generated-form lemma, lexical
+ * equivalence, or context-licensed conditioned form has a gloss. Machine
+ * tagger lemmas remain visible as review suggestions.
  *
  *   bun scripts/export_unseeded_words.mjs \
  *     --db=build/corpus.db \
@@ -205,7 +205,7 @@ export function collectUnseededWords({
   `).all(...(region ? [region] : []));
 
   const unresolved = new Map();
-  const resolutions = { lexical_equivalence: 0, conditioned_form: 0, tagger_lemma: 0 };
+  const resolutions = { lexical_equivalence: 0, conditioned_form: 0, tagger_lemma_suggestion: 0 };
   for (const row of rows) {
     const form = String(row.surface_fold);
     const canonical = canonicalLexicalForm(form, lexicalRules);
@@ -221,10 +221,8 @@ export function collectUnseededWords({
     }
 
     const taggerLemma = foldToken(String(row.lemma ?? ""));
-    if (taggerLemma && knownGlosses.has(taggerLemma)) {
-      resolutions.tagger_lemma++;
-      continue;
-    }
+    const suggestedCanonical = taggerLemma && knownGlosses.has(taggerLemma) ? taggerLemma : "";
+    if (suggestedCanonical) resolutions.tagger_lemma_suggestion++;
 
     let record = unresolved.get(form);
     if (!record) {
@@ -237,6 +235,7 @@ export function collectUnseededWords({
         dialect_paths: new Set(),
         regions: new Set(),
         lemmaVotes: new Map(),
+        canonicalVotes: new Map(),
         uposVotes: new Map(),
         contexts: [],
         contextIds: new Set(),
@@ -251,6 +250,7 @@ export function collectUnseededWords({
     if (row.dialect_path) record.dialect_paths.add(String(row.dialect_path));
     if (row.region) record.regions.add(String(row.region));
     addVote(record.lemmaVotes, taggerLemma);
+    addVote(record.canonicalVotes, suggestedCanonical);
     addVote(record.uposVotes, String(row.upos ?? ""));
     const contextCollection = String(row.collection || row.sentence_id);
     if (record.contexts.length < maxContexts && !record.contextIds.has(row.sentence_id)
@@ -268,6 +268,8 @@ export function collectUnseededWords({
     .map((row, index) => ({
       rank: index + 1,
       form: row.form,
+      lookup_status: row.canonicalVotes.size ? "tagger_lemma_suggestion" : "unresolved",
+      canonical_candidates: rankedVotes(row.canonicalVotes),
       occurrences: row.occurrences,
       collection_count: row.collections.size,
       dialect_count: row.dialects.size,
@@ -291,7 +293,8 @@ export function collectUnseededWords({
 
 export function writeUnseededWords(path, result, metadata = {}) {
   const fields = [
-    "rank", "form", "occurrences", "collection_count", "dialect_count", "region_count",
+    "rank", "form", "lookup_status", "canonical_candidates",
+    "occurrences", "collection_count", "dialect_count", "region_count",
     "surfaces", "collections", "dialects", "dialect_paths", "regions",
     "tagger_lemmas", "tagger_pos", "review_disposition", "suggested_parse",
     "evidence", "note", "contexts",
@@ -306,7 +309,7 @@ export function writeUnseededWords(path, result, metadata = {}) {
     `# scanned_unresolved_occurrences: ${result.scanned_occurrences}`,
     `# resolved_lexical_equivalence: ${result.resolutions.lexical_equivalence}`,
     `# resolved_conditioned_form: ${result.resolutions.conditioned_form}`,
-    `# resolved_tagger_lemma: ${result.resolutions.tagger_lemma}`,
+    `# tagger_lemma_suggestion_occurrences: ${result.resolutions.tagger_lemma_suggestion}`,
     fields.join("\t"),
   ];
   for (const word of result.words) {

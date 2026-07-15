@@ -72,13 +72,16 @@ test("exports only forms that remain unresolved after every licensed lookup", ()
 
   expect(result.words.map((word) => [word.form, word.occurrences])).toEqual([
     ["unknown", 2],
+    ["surfaceform", 1],
     ["ysamka", 1],
   ]);
   expect(result.words[0].collection_count).toBe(2);
   expect(result.words[0].contexts).toHaveLength(2);
   expect(result.words[0].review_disposition).toBe("lexical_candidate");
   expect(result.words[0].evidence).toBe("fixture");
-  expect(result.resolutions).toEqual({ lexical_equivalence: 1, conditioned_form: 2, tagger_lemma: 1 });
+  expect(result.words[1].lookup_status).toBe("tagger_lemma_suggestion");
+  expect(result.words[1].canonical_candidates).toEqual([{ value: "known", count: 1 }]);
+  expect(result.resolutions).toEqual({ lexical_equivalence: 1, conditioned_form: 2, tagger_lemma_suggestion: 1 });
   db.close();
 });
 
@@ -93,6 +96,6 @@ test("cross-collection filtering and TSV output are deterministic", () => {
   writeUnseededWords(second, result, metadata);
 
   expect(readFileSync(first, "utf8")).toBe(readFileSync(second, "utf8"));
-  expect(readFileSync(first, "utf8")).toContain("\n1\tunknown\t2\t2\t2\t1\t");
+  expect(readFileSync(first, "utf8")).toContain("\n1\tunknown\tunresolved\t[]\t2\t2\t2\t1\t");
   db.close();
 });

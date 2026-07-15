@@ -139,9 +139,10 @@ bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADV
 ## Unseeded corpus words
 
 An unseeded corpus word is a recurring Latin-script token that cannot reach an
-MDB gloss through its surface, generated-form lemma, tagger lemma, registered
-lexical equivalence, or context-licensed conditioned form. The export includes
-source and dialect distributions plus translated examples for lexical review.
+MDB gloss through its surface, generated-form lemma, registered lexical
+equivalence, or context-licensed conditioned form. The export includes source
+and dialect distributions plus translated examples for lexical review. Machine
+tagger lemmas appear as canonical-form suggestions and require review.
 
 The default export requires attestations in two collections. This threshold
 prioritizes forms shared across independent sources while retaining their
