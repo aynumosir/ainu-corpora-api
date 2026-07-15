@@ -291,3 +291,24 @@ paths:
       summary: Raw vocab-gap candidates (glossary subtraction stays in the MCP)
       parameters: [ { name: minCount, in: query, schema: { type: integer, default: 1 } } ]
       responses: { "200": { description: "candidate[] in data" } }
+  /v1/unseeded:
+    get:
+      summary: Corpus words awaiting or carrying MDB review decisions
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: lookup_status, in: query, schema: { type: string, enum: [unresolved, tagger_lemma_suggestion] } }
+        - { name: review_disposition, in: query, schema: { type: string } }
+        - { name: region, in: query, schema: { type: string } }
+        - { name: min_count, in: query, schema: { type: integer, default: 0 } }
+        - { name: min_collections, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses: { "200": { description: "UnseededWordSummary[] in data with pagination and snapshot metadata" } }
+  /v1/unseeded/{form}:
+    get:
+      summary: Full corpus evidence for one unseeded form
+      parameters:
+        - { name: form, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: "UnseededWord in data with snapshot metadata" }
+        "404": { description: "error: unknown_form" }

@@ -38,6 +38,8 @@ also travels in the body so non-URL consumers can assert it.
 | `GET /v1/stopwords` | — | `string[]` |
 | `GET /v1/stopword` | `token` (**already normalized**) | `{ token, is_stopword }` |
 | `GET /v1/candidates` | `minCount` (def 1) | raw vocab-gap `{ token, count, attested_in, sample_text, sample_translation }[]` |
+| `GET /v1/unseeded` | `q`, `lookup_status`, `review_disposition`, `region`, `min_count`, `min_collections`, `limit`, `offset` | corpus-wide MDB review queue with pagination and one example per form |
+| `GET /v1/unseeded/:form` | path form | full review evidence, distributions, tagger suggestions, and contexts for one form |
 
 ### Normalization contract
 `freq`/`stopword` endpoints take an **already gaps-normalized** token. The MCP
