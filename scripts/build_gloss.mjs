@@ -63,11 +63,12 @@ function equivalentForms(form) {
   const canonical = canonicalLemma(original);
   const values = new Set([original, canonical].filter(Boolean));
   for (const rule of lemmaEquivalences.lexical ?? []) {
-    if (!canonical.includes(rule.canonical)) continue;
     for (const variant of rule.variants ?? []) {
-      values.add(rule.match === "substring"
-        ? canonical.replaceAll(rule.canonical, variant)
-        : variant);
+      if (rule.match === "substring" && canonical.includes(rule.canonical)) {
+        values.add(canonical.replaceAll(rule.canonical, variant));
+      } else if (canonical === rule.canonical) {
+        values.add(variant);
+      }
     }
   }
   return [...values].filter(Boolean);
