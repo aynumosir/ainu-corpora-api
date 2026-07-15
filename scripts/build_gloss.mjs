@@ -22,6 +22,7 @@ const srcArg = process.argv.find((a) => a.startsWith("--src="));
 const outArg = process.argv.find((a) => a.startsWith("--out="));
 const formsArg = process.argv.find((a) => a.startsWith("--forms="));
 const lexArg = process.argv.find((a) => a.startsWith("--lexemes="));
+const equivalencesArg = process.argv.find((a) => a.startsWith("--equivalences="));
 const SRC = new URL(
   srcArg ? srcArg.slice("--src=".length)
     : "../../ainu-morpheme-database/morpheme_db/output/morpheme_database.json",
@@ -34,6 +35,43 @@ const LEX = new URL(
     : "../../ainu-morpheme-database/lexeme_db/output/lexeme_bank.json",
   import.meta.url,
 );
+const EQUIVALENCES = new URL(
+  equivalencesArg ? equivalencesArg.slice("--equivalences=".length)
+    : "../../ainu-morpheme-database/lexeme_db/lemma_equivalences.json",
+  import.meta.url,
+);
+
+let lemmaEquivalences = { lexical: [], conditioned: [] };
+if (existsSync(EQUIVALENCES)) {
+  lemmaEquivalences = JSON.parse(readFileSync(EQUIVALENCES, "utf8"));
+}
+
+function canonicalLemma(form) {
+  let value = String(form ?? "");
+  for (const rule of lemmaEquivalences.lexical ?? []) {
+    for (const variant of rule.variants ?? []) {
+      value = rule.match === "substring"
+        ? value.replaceAll(variant, rule.canonical)
+        : (value === variant ? rule.canonical : value);
+    }
+  }
+  return value;
+}
+
+function equivalentForms(form) {
+  const original = String(form ?? "");
+  const canonical = canonicalLemma(original);
+  const values = new Set([original, canonical].filter(Boolean));
+  for (const rule of lemmaEquivalences.lexical ?? []) {
+    if (!canonical.includes(rule.canonical)) continue;
+    for (const variant of rule.variants ?? []) {
+      values.add(rule.match === "substring"
+        ? canonical.replaceAll(rule.canonical, variant)
+        : variant);
+    }
+  }
+  return [...values].filter(Boolean);
+}
 
 const rows = JSON.parse(readFileSync(SRC, "utf8"));
 
@@ -262,8 +300,10 @@ function keyCandidates(m) {
   for (const k of keys) {
     if (!k) continue;
     const s = String(k);
-    out.add(s);
-    for (const v of orthographicVariants(s, m)) out.add(v);
+    for (const equivalent of equivalentForms(s)) {
+      out.add(equivalent);
+      for (const v of orthographicVariants(equivalent, m)) out.add(v);
+    }
     // NOTE: we deliberately do NOT strip the leading dash off bound affixes to
     // expose them as bare token keys. A bare corpus token is a free word, not a
     // bound morpheme, so `-ne` must never claim the `ne` slot — otherwise the
@@ -284,7 +324,7 @@ function recordFromEntry(m, key, pri = priority(m, key)) {
   return {
     key_fold: keyFold,
     key: normToken(key),
-    lemma: m.lemma ?? null,
+    lemma: m.lemma ? canonicalLemma(m.lemma) : null,
     category: m.category ?? null,
     morph_type: m.morph_type ?? null,
     pos_display: posDisplay(m, gloss),
@@ -327,10 +367,12 @@ const baseScore = (m, k) => priority(m, k) + (first(m.glosses_en) ? 100_000_000 
 const entryByFold = new Map();
 for (const m of rows) {
   for (const k of [m.id, m.lemma]) {
-    const f = k ? foldToken(String(k)) : "";
-    if (!f) continue;
-    const prev = entryByFold.get(f);
-    if (!prev || baseScore(m, k) > baseScore(prev, prev.id ?? prev.lemma ?? "")) entryByFold.set(f, m);
+    for (const equivalent of equivalentForms(k)) {
+      const f = equivalent ? foldToken(equivalent) : "";
+      if (!f) continue;
+      const prev = entryByFold.get(f);
+      if (!prev || baseScore(m, k) > baseScore(prev, prev.id ?? prev.lemma ?? "")) entryByFold.set(f, m);
+    }
   }
 }
 
@@ -724,31 +766,33 @@ if (existsSync(LEX)) {
     const posDisp = posDisplay(pseudo, gloss);
     const conf = Number(r.gloss_en_confidence ?? 0) || 0;
     const score = conf * 10 + (posDisp ? 1 : 0);
-    for (const k of [r.lemma, String(r.id ?? "").split(".")[0]]) {
+    for (const k of [r.lemma, ...(r.aliases ?? []), String(r.id ?? "").split(".")[0]]) {
       if (!k) continue;
-      const f = foldToken(String(k));
-      if (!f) continue;
+      for (const equivalent of equivalentForms(String(k))) {
+        const f = foldToken(equivalent);
+        if (!f) continue;
       // Every lexeme sense is a possible ALTERNATE reading (ranked below the
       // morpheme-DB readings via negative priority) — this is what surfaces
       // pa = mouth / year alongside head / PL.
-      if (gloss) addCandidate({ key_fold: f, pos_display: posDisp, gloss_en: gloss, category: pos || null, priority: -1000 + conf });
-      const prev = lexBest.get(f);
-      if (!prev || score > prev.score) {
-        lexBest.set(f, {
-          score,
-          rec: {
-            key_fold: f,
-            key: normToken(String(k)),
-            lemma: r.lemma ?? null,
-            category: pos || null,
-            morph_type: "lexeme",
-            pos_display: posDisp,
-            gloss_en: gloss,
-            gloss_jp: glossJp,
-            source_id: `lexeme:${r.id ?? k}`,
-            priority: 0,
-          },
-        });
+        if (gloss) addCandidate({ key_fold: f, pos_display: posDisp, gloss_en: gloss, category: pos || null, priority: -1000 + conf });
+        const prev = lexBest.get(f);
+        if (!prev || score > prev.score) {
+          lexBest.set(f, {
+            score,
+            rec: {
+              key_fold: f,
+              key: normToken(equivalent),
+              lemma: r.lemma ? canonicalLemma(r.lemma) : null,
+              category: pos || null,
+              morph_type: "lexeme",
+              pos_display: posDisp,
+              gloss_en: gloss,
+              gloss_jp: glossJp,
+              source_id: `lexeme:${r.id ?? k}`,
+              priority: 0,
+            },
+          });
+        }
       }
     }
   }
