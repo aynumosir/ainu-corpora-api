@@ -256,6 +256,19 @@ paths:
         - { name: mode, in: query, schema: { type: string, enum: [kwic, pos, collocation, structural, analytics, inflection, text] } }
       responses:
         "200": { description: "SearchExample[] in data ({ mode, label, desc, params, path })" }
+  /v1/gloss:
+    get:
+      summary: Curated gloss layers covering one sentence (with credibility + provenance)
+      parameters:
+        - { name: id, in: query, required: true, schema: { type: string }, description: "sentence id, e.g. hokudai-respect/full#7" }
+      responses:
+        "200": { description: "{ sentence_id, layers[] } in data — each layer { id, credibility, language, status, author, origin_url, origin_title, description, source_repository, source_revision, retrieved_at, parts[] }; each part { part, ain, gloss, interp, aligned, pairs, notes, divergence }" }
+        "400": { description: missing id }
+  /v1/gloss/coverage:
+    get:
+      summary: Documents with curated-gloss coverage, per layer
+      responses:
+        "200": { description: "{ layers[] } in data — layer meta + documents[{document,sentences}] + total sentences" }
   /v1/stats:
     get:
       summary: Corpus totals + top dialect distribution

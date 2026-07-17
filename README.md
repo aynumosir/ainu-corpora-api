@@ -91,6 +91,8 @@ Adds an accent-folded search key (`surface_fold`) and a morphology table
 | `GET /v1/analytics` | `q` (req), `match` (def `fold`), `top` (10) | `{node,total,dialects[],authors[],collections[],upos[]}` distribution |
 | `GET /v1/inflections` | `word` (req) | `{query,fold,forms[]}` — singular↔plural & possessed forms |
 | `GET /v1/examples` | `mode` (optional) | Curated runnable examples `{mode,label,desc,params,path}[]` |
+| `GET /v1/gloss` | `id` (req, sentence id e.g. `hokudai-respect/full#7`) | Curated gloss layers covering the sentence: per layer `{credibility,author,origin_url,…, parts[]}`; each part carries `ain`/`gloss`/`interp` and `pairs` (token alignment) when 1:1 |
+| `GET /v1/gloss/coverage` | — | Documents with curated-gloss coverage per layer (fetch once, badge rows client-side) |
 
 **Normalization / folding.** `match=fold` (the KWIC default) is **accent-
 insensitive**: pitch acute (`á`) and length circumflex/macron (`â`/`ā`) are

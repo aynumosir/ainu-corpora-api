@@ -36,6 +36,7 @@ import { kwic, kwicTotal, inflections, type NodeSort, type KwicMatch } from "./k
 import { collocations, structural, wordAnalytics } from "./analysis.js";
 import { dialectTree } from "./dialect.js";
 import { examplesFor } from "./examples.js";
+import { glossForSentence, glossCoverage } from "./gloss.js";
 import { BadRegexError } from "./regex.js";
 import { selectUnseededWords } from "./unseeded.js";
 import { unseededSnapshot } from "./unseeded-data.js";
@@ -348,6 +349,20 @@ app.get("/v1/dialects", async (c) => {
 // Curated, runnable search examples (a self-describing tour of every surface).
 // Optionally filter by ?mode=kwic|pos|collocation|structural|analytics|inflection|text
 app.get("/v1/examples", (c) => ok(c, examplesFor(c.req.query("mode"))));
+
+// ───────────────────────────── /v1/gloss ───────────────────────────── //
+// Curated gloss layers (ainu-corpora-annotations). /v1/gloss?id=<sentence_id>
+// returns every layer covering that sentence — parts in order, each layer
+// carrying its credibility + provenance so a UI can label the block.
+// /v1/gloss/coverage lists covered documents per layer (fetch once, badge
+// result rows client-side). Both return empty results until the tables are
+// loaded (see migrations/0006_curated_gloss.sql).
+app.get("/v1/gloss/coverage", async (c) => ok(c, await glossCoverage(c.get("db"))));
+app.get("/v1/gloss", async (c) => {
+  const id = c.req.query("id") ?? "";
+  if (!id.trim()) return fail(c, 400, "missing_id", "id is required (sentence id, e.g. hokudai-respect/full#7)");
+  return ok(c, await glossForSentence(c.get("db"), id));
+});
 
 app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.path}`));
 app.onError((err, c) => {

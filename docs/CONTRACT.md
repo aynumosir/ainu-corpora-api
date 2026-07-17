@@ -53,6 +53,8 @@ GET /v1/pos?upos=VERB&next_surface==an&limit=20
 | Where does `kamuy` occur? | `/v1/analytics?q=kamuy` |
 | Inflected relatives of `arpa` | `/v1/inflections?word=arpa` |
 | Discover runnable examples | `/v1/examples?mode=kwic` |
+| Curated gloss for a sentence | `/v1/gloss?id=hokudai-respect%2Ffull%237` |
+| Which texts have curated gloss | `/v1/gloss/coverage` |
 
 - **Source links:** result lines from `/v1/search`, `/v1/concordance`, `/v1/pos`
   and `/v1/kwic` carry `source_slug` — the db.aynu.org source-record slug
