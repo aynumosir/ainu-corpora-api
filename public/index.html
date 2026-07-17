@@ -88,6 +88,25 @@
   body.gloss .kwic .l, body.gloss .kwic .r { white-space: normal; overflow: visible; }
   .badge { font-family: var(--ui); font-size: 11px; color: var(--accent); border: 1px solid var(--line);
     background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; margin-left: 8px; }
+  /* Curated gloss layer (ainu-corpora-annotations): badge on covered rows +
+     expandable interlinear panel. Aligned parts render one stack per token
+     (surface over gloss); unaligned parts render the two lines stacked. */
+  button.cbadge { cursor: pointer; font: inherit; font-family: var(--ui); font-size: 11px; }
+  button.cbadge[aria-expanded=true] { color: var(--panel); background: var(--accent); border-color: var(--accent); }
+  .cg { border-left: 3px solid var(--accent); background: var(--accent-soft); margin: 8px 0 2px;
+    padding: 8px 12px 6px; border-radius: 0 8px 8px 0; }
+  .cg .cgpart { padding: 3px 0 5px; }
+  .cg .cgpart + .cgpart { border-top: 1px dashed var(--line); }
+  .cg .cgtok { display: inline-block; text-align: center; margin: 0 10px 6px 0; vertical-align: top; }
+  .cg .cgs { display: block; font-family: var(--mono); font-size: 14px; }
+  .cg .cgg { display: block; font-family: var(--ui); font-size: 10px; color: var(--pos); line-height: 1.25; max-width: 14em; }
+  .cg .cgline { font-family: var(--mono); font-size: 13.5px; }
+  .cg .cggline { font-size: 12px; color: var(--pos); padding-bottom: 2px; }
+  .cg .cgi { color: var(--muted); font-size: 12.5px; padding-top: 2px; }
+  .cg .cgattr { font-size: 11px; color: var(--muted); border-top: 1px solid var(--line);
+    margin-top: 4px; padding-top: 5px; }
+  .cg .cgattr a { color: var(--link); }
+  .cg .cgattr .cred { color: var(--accent); font-weight: 600; }
   .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; padding-left: 2px; font-size: 12.5px; }
   .meta .tr { color: var(--muted); }
   .meta .src { color: var(--muted); margin-left: auto; }
@@ -369,6 +388,65 @@ function kwicStrRow(d, badge) {
     </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`;
 }
 
+// ─── curated gloss layers (ainu-corpora-annotations) ───
+// Coverage is tiny (documents-with-curated-gloss per layer), so fetch it once
+// and badge covered rows locally; the per-sentence payload loads on demand.
+let cgCoverage = null; // Map document -> true
+async function ensureCgCoverage() {
+  if (cgCoverage) return cgCoverage;
+  cgCoverage = new Map();
+  try {
+    const data = await get("/v1/gloss/coverage");
+    for (const layer of data.layers || [])
+      for (const d of layer.documents || []) cgCoverage.set(d.document, true);
+  } catch (e) { /* coverage is optional — no badges when absent */ }
+  return cgCoverage;
+}
+const cgCache = new Map(); // sentence id -> /v1/gloss payload
+function cgPartHtml(p) {
+  const line = p.aligned && p.pairs
+    ? `<div>${p.pairs.map(([a, g]) =>
+        `<span class="cgtok"><span class="cgs">${esc(a)}</span><span class="cgg">${esc(g)}</span></span>`).join("")}</div>`
+    : `<div class="cgline">${esc(p.ain)}</div><div class="cggline">${esc(p.gloss)}</div>`;
+  return `<div class="cgpart">${line}${p.interp ? `<div class="cgi">${esc(p.interp)}</div>` : ""}</div>`;
+}
+function cgAttrHtml(l) {
+  const origin = l.origin_url
+    ? `<a href="${esc(l.origin_url)}" target="_blank" rel="noopener">${esc(l.origin_title || l.origin_url)}</a>`
+    : esc(l.origin_title || l.id);
+  return `<div class="cgattr"><span class="cred">${esc(l.credibility)}</span> gloss
+    ${l.author ? ` · ${esc(l.author)}` : ""} · ${origin}${l.status ? ` · ${esc(l.status)}` : ""}</div>`;
+}
+async function toggleCgPanel(hit, id, btn) {
+  const open = hit.querySelector(".cg");
+  if (open) { open.remove(); btn.setAttribute("aria-expanded", "false"); return; }
+  let data = cgCache.get(id);
+  if (!data) {
+    try { data = await get(`/v1/gloss?id=${encodeURIComponent(id)}`); } catch (e) { return; }
+    cgCache.set(id, data);
+  }
+  const html = (data.layers || []).map((l) =>
+    `<div class="cg">${(l.parts || []).map(cgPartHtml).join("")}${cgAttrHtml(l)}</div>`).join("");
+  if (html) { hit.insertAdjacentHTML("beforeend", html); btn.setAttribute("aria-expanded", "true"); }
+}
+async function markCuratedGloss(rows, idOf) {
+  if (!rows || !rows.length) return;
+  const cov = await ensureCgCoverage();
+  if (!cov.size) return;
+  document.querySelectorAll("#hits .hit").forEach((hit, i) => {
+    const id = idOf(rows[i] || {});
+    if (!id || !cov.has(String(id).split("#")[0])) return;
+    const meta = hit.querySelector(".meta");
+    if (!meta || meta.querySelector(".cbadge")) return;
+    const b = document.createElement("button");
+    b.className = "badge cbadge"; b.type = "button"; b.textContent = "注 gloss";
+    b.title = "curated gloss available — click to show";
+    b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", () => toggleCgPanel(hit, id, b));
+    meta.insertBefore(b, meta.querySelector(".src"));
+  });
+}
+
 function bindWordClicks() {
   document.querySelectorAll(".hits .tok, .hits .w").forEach((el) => {
     el.addEventListener("click", () => {
@@ -608,6 +686,7 @@ async function run() {
       $("#hits").innerHTML = lastRows.length ? lastRows.map((d) => kwicTokRow(d)).join("") : `<div class="empty">No matches.</div>`;
       renderPager(j.meta, lastRows.length);
       done(j.meta?.total ? "" : `${lastRows.length} result${lastRows.length === 1 ? "" : "s"}.`);
+      markCuratedGloss(lastRows, (d) => d.sentence_id);
       if (effMatch !== "regex") showInflections(q);
     } else if (kind === "pos") {
       const p = new URLSearchParams({ limit, window: "34" });
@@ -621,6 +700,7 @@ async function run() {
         kwicStrRow(d, d.upos ? `<span class="badge">${esc(d.upos)}${d.lemma ? " · " + esc(d.lemma) : ""}</span>` : "")
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
+      markCuratedGloss(lastRows, (d) => d.sentence_id);
     } else if (kind === "pattern") {
       const p = new URLSearchParams({ pattern: q, limit });
       if (dialect) p.set("dialect", dialect);
@@ -632,6 +712,7 @@ async function run() {
           <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
+      markCuratedGloss(lastRows, (d) => d.sentence_id);
     } else { // text
       lastRows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=any&orthography=modern&limit=${encodeURIComponent(limit)}${dialect ? `&dialect=${encodeURIComponent(dialect)}` : ""}`);
       $("#hits").innerHTML = lastRows.length ? lastRows.map((d) =>
@@ -639,6 +720,7 @@ async function run() {
           <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
+      markCuratedGloss(lastRows, (d) => d.id);
     }
     bindWordClicks();
     const canExport = (lastRows.length || lastCols?.collocates?.length || lastDist?.total) ? "" : "none";
