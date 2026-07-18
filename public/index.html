@@ -302,7 +302,7 @@ function layerStack(d, opts) {
   if (d.legacy_text) rows.push(["source", d.legacy_text, ""]);
   if (!rows.length) return "";
   return `<div class="layers">${rows.map(([tag, t, cls]) =>
-    `<div class="lyr${cls ? " " + cls : ""}">${tag ? `<span class="lyr-tag">${tag}</span>` : ""}<span>${esc(t)}</span></div>`).join("")}</div>`;
+    `<div class="lyr${cls ? " " + cls : ""}"><span class="lyr-tag">${tag}</span><span>${esc(t)}</span></div>`).join("")}</div>`;
 }
 
 // ─── examples (empty-state chips, from /v1/examples) ───

@@ -229,7 +229,7 @@ paths:
         - { name: dialect, in: query, schema: { type: string } }
         - { name: author, in: query, schema: { type: string } }
       responses:
-        "200": { description: "StructuralLine[] in data (match[] + match_text + left_text/right_text)" }
+        "200": { description: "StructuralLine[] in data (match[] + match_text + left_text/right_text + full-sentence text, with legacy_text / text_layer / text_layer_status on layered sentences)" }
         "400": { description: "error: missing_pattern | bad_regex" }
   /v1/analytics:
     get:
