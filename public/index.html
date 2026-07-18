@@ -115,11 +115,12 @@
   .layer-notice { margin: 12px 0 0; padding: 9px 12px; border: 1px solid var(--line);
     border-radius: 8px; color: var(--muted); background: var(--panel); font-size: 12px; }
   .layer-notice b { color: var(--accent); }
-  .variant-row { display: grid; grid-template-columns: max-content 1fr; gap: 8px; margin-top: 6px;
+  .variant-row { display: none; grid-template-columns: max-content 1fr; gap: 8px; margin-top: 6px;
     padding: 6px 9px; border-left: 3px solid var(--bar); background: var(--accent-soft);
     color: var(--muted); font-family: var(--mono); font-size: 12px; }
   .variant-label { color: var(--accent); font-family: var(--ui); font-size: 10px; font-weight: 700;
     letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+  body.orig .variant-row { display: grid; }
   .empty { color: var(--muted); padding: 30px 4px; }
   /* Tables (collocates / distribution / forms) */
   table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
@@ -148,7 +149,7 @@
 </div></header>
 
 <div class="wrap">
-  <div class="layer-notice"><b>Bible display:</b> modern orthography is available immediately as a provisional transcription. Each result keeps the reviewed 1897 traditional source transcription as an alternative.</div>
+  <div class="layer-notice"><b>Modern orthography display:</b> sources with a curated transcription layer — the Batchelor Bible and the Murasaki Sakhalin texts — are shown and searched in the modern orthography. The <b>original</b> toggle adds each result's source writing as printed.</div>
   <form id="f" autocomplete="off">
     <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · /ech?i/ · 神" autofocus>
     <button class="go" type="submit">Search</button>
@@ -191,6 +192,8 @@
         <option value="node">node</option><option value="dialect">dialect</option><option value="author">author</option>
       </select></label>
     <button type="button" class="ghost" id="t-gloss" aria-pressed="false">POS/gloss</button>
+    <button type="button" class="ghost" id="t-orig" aria-pressed="false"
+      title="Show each result's source writing as printed (Batchelor Latin, Murasaki apostrophes, …); display and search stay in the modern orthography">original</button>
     <button type="button" class="ghost" id="t-csv">CSV</button>
     <button type="button" class="ghost" id="t-json">JSON</button>
   </div>
@@ -289,7 +292,7 @@ function src(d) {
 function sourceVariant(d) {
   if (!d.legacy_text) return "";
   const status = d.text_layer_status ? ` · ${d.text_layer_status}` : "";
-  return `<div class="variant-row"><span class="variant-label">1897 traditional source</span><span>${esc(d.legacy_text)}</span><span class="variant-label">Modern layer</span><span>${esc(d.text_layer || "modern orthography")}${esc(status)}</span></div>`;
+  return `<div class="variant-row"><span class="variant-label">source</span><span>${esc(d.legacy_text)}</span><span class="variant-label">Modern layer</span><span>${esc(d.text_layer || "modern orthography")}${esc(status)}</span></div>`;
 }
 
 // ─── examples (empty-state chips, from /v1/examples) ───
@@ -590,6 +593,10 @@ $("#t-json").addEventListener("click", toJson);
 $("#t-gloss").addEventListener("click", () => {
   const on = document.body.classList.toggle("gloss");
   $("#t-gloss").setAttribute("aria-pressed", on);
+});
+$("#t-orig").addEventListener("click", () => {
+  const on = document.body.classList.toggle("orig");
+  $("#t-orig").setAttribute("aria-pressed", on);
 });
 $("#sort").addEventListener("change", () => { resetOffset(); run(); });
 

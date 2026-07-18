@@ -58,6 +58,48 @@ class ModernTextLayerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "layer/source mismatch"):
                 layer.resolve("bible/mat/001#1", "Kamuy")
 
+    def make_flat_layer(self, root: Path, status: str = "reviewed") -> Path:
+        (root / "manifest.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "schema": 1,
+                    "layer": "modern-orthography-latn",
+                    "version": 1,
+                    "status": status,
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        (root / "001.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "layer": "modern-orthography-latn",
+                    "version": 1,
+                    "path": "texts/aa-asai/001.yaml",
+                    "sentences": [
+                        {"index": 0, "ain": "'ahci sineh 'an", "ain-modern": "ahci sineh an"},
+                    ],
+                },
+                allow_unicode=True,
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        return root
+
+    def test_multiple_roots_with_flat_files_and_per_layer_status(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            layer = ModernTextLayer([self.make_layer(Path(a)), self.make_flat_layer(Path(b))])
+            bible = layer.resolve("bible/mat/001#1", "Kamui")
+            self.assertEqual(bible.text, "Kamuy")
+            self.assertEqual(bible.text_layer_status, "provisional")
+            asai = layer.resolve("aa-asai/001#0", "'ahci sineh 'an")
+            self.assertEqual(asai.text, "ahci sineh an")
+            self.assertEqual(asai.legacy_text, "'ahci sineh 'an")
+            self.assertEqual(asai.text_layer_status, "reviewed")
+            layer.validate_complete()
+
     def test_requires_complete_corpus_coverage(self):
         with tempfile.TemporaryDirectory() as tmp:
             layer = ModernTextLayer(self.make_layer(Path(tmp)))

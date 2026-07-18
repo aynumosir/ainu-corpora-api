@@ -63,14 +63,18 @@ offsets. 1,307,768 tokens are POS-tagged (`combined_enriched/model-best`, UD UPO
 surface/offset but NULL POS. POS is **machine-tagged, not gold** (`model_version`
 recorded per token).
 
-The Bible's active token/KWIC text is the **provisional**
-`modern-orthography-latn@1` sidecar from `ainu-corpora-annotations`. The final
-reviewed 1897 source transcription remains available as `legacy_text`; all other
-collections continue to use their source text. Plain `/v1/search` retains its
-historical source-text behavior. Opt into the active modern text with
-`orthography=modern`. Token endpoints return `text_layer`, `text_layer_status`,
-and `legacy_text` when a sidecar is active. The public UI displays modern Bible
-text immediately and places the 1897 source directly beneath each result.
+The active token/KWIC text of layered collections is the **provisional**
+`modern-orthography-latn@1` sidecar from `ainu-corpora-annotations`: the
+Batchelor Bible (`bible-modern-latn`) and the Murasaki-notation Sakhalin texts
+(`aa-asai-modern-latn`, `murasaki-enciw-modern-latn`). The source transcription
+remains available as `legacy_text`; all other collections continue to use their
+source text. Plain `/v1/search` retains its historical source-text behavior.
+Opt into the active modern text with `orthography=modern`. Token endpoints
+return `text_layer`, `text_layer_status`, and `legacy_text` when a sidecar is
+active. The public UI displays layered collections in modern orthography and
+reveals each result's source writing behind the **original** toggle. The
+Bible's per-chapter navigation lines ("I Korintos 1", sentence `#0` of every
+chapter) are excluded from the token layer at build time.
 
 | Method · Route | Params | Returns |
 |---|---|---|
@@ -113,11 +117,16 @@ Rebuild the token layer:
 # 1. tokenize (light, no torch):
 PYTHONPATH=../ainu-morpheme-tagger uv run --python 3.12 --with "spacy>=3.8.4" --with "numpy<2" --with pyyaml --with click --no-project \
   scripts/build_tokens.py --data ../ainu-corpora/data.jsonl --out build \
-  --modern-layer ../ainu-corpora-annotations/layers/bible-modern-latn
-# 2. POS-tag (CNN, CPU) — run from the tagger repo so lookups/ resolve:
+  --modern-layer ../ainu-corpora-annotations/layers/bible-modern-latn \
+  --modern-layer ../ainu-corpora-annotations/layers/aa-asai-modern-latn \
+  --modern-layer ../ainu-corpora-annotations/layers/murasaki-enciw-modern-latn
+# 2. POS-tag (CNN, CPU) — run from the tagger repo so lookups/ resolve;
+#    pass the SAME --modern-layer set as step 1:
 #    (cd ../ainu-morpheme-tagger && PYTHONPATH=. .venv/bin/python ../ainu-corpora-api/scripts/tag_pos.py \
 #       --data ../ainu-corpora/data.jsonl --model training/combined_enriched/model-best \
 #       --modern-layer ../ainu-corpora-annotations/layers/bible-modern-latn \
+#       --modern-layer ../ainu-corpora-annotations/layers/aa-asai-modern-latn \
+#       --modern-layer ../ainu-corpora-annotations/layers/murasaki-enciw-modern-latn \
 #       --out ../ainu-corpora-api/build --procs 6)
 # 3. load (local dry-run, then Turso):
 bun scripts/load_tokens.mjs --tokens=../build/tokens_pos.jsonl          # local build/corpus.db + validation
