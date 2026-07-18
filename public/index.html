@@ -115,12 +115,11 @@
   .layer-notice { margin: 12px 0 0; padding: 9px 12px; border: 1px solid var(--line);
     border-radius: 8px; color: var(--muted); background: var(--panel); font-size: 12px; }
   .layer-notice b { color: var(--accent); }
-  .variant-row { display: none; grid-template-columns: max-content 1fr; gap: 8px; margin-top: 6px;
-    padding: 6px 9px; border-left: 3px solid var(--bar); background: var(--accent-soft);
-    color: var(--muted); font-family: var(--mono); font-size: 12px; }
-  .variant-label { color: var(--accent); font-family: var(--ui); font-size: 10px; font-weight: 700;
-    letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
-  body.orig .variant-row { display: grid; }
+  /* Source writing as printed — a plain line under the hit ("original" toggle),
+     above any expanded gloss layer panel. */
+  .orig-line { display: none; font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+    margin-top: 5px; padding-left: 2px; }
+  body.orig .orig-line { display: block; }
   .empty { color: var(--muted); padding: 30px 4px; }
   /* Tables (collocates / distribution / forms) */
   table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
@@ -291,8 +290,7 @@ function src(d) {
 }
 function sourceVariant(d) {
   if (!d.legacy_text) return "";
-  const status = d.text_layer_status ? ` · ${d.text_layer_status}` : "";
-  return `<div class="variant-row"><span class="variant-label">source</span><span>${esc(d.legacy_text)}</span><span class="variant-label">Modern layer</span><span>${esc(d.text_layer || "modern orthography")}${esc(status)}</span></div>`;
+  return `<div class="orig-line">${esc(d.legacy_text)}</div>`;
 }
 
 // ─── examples (empty-state chips, from /v1/examples) ───
