@@ -234,6 +234,7 @@ export interface StructuralLine {
   match_text: string;
   left_text: string;
   right_text: string;
+  text: string;             // full sentence in the active (canonical) text
   translation: string | null;
   dialect: string | null;
   author: string | null;
@@ -343,6 +344,7 @@ async function structuralImpl(
       match_text: text.slice(a, b),
       left_text: text.slice(Math.max(0, a - 40), a),
       right_text: text.slice(b, b + 40),
+      text,
       translation: (r.translation as string | null) ?? null,
       dialect: (r.dialect as string | null) ?? null,
       author: (r.author as string | null) ?? null,

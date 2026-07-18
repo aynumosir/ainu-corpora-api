@@ -34,6 +34,7 @@ components:
         document: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug (https://db.aynu.org/sources/<slug>); null when the collection has no registered source" }
+        text: { type: string, description: "full sentence in the active (canonical) text" }
         legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when text is an additive modern layer" }
         text_layer: { type: string, nullable: true, example: "modern-orthography-latn@1" }
         text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }
@@ -49,6 +50,7 @@ components:
         author: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
+        text: { type: string, description: "full sentence in the active (canonical) text" }
         legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when a layer is active" }
         text_layer: { type: string, nullable: true }
         text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }
@@ -102,6 +104,7 @@ components:
         author: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
+        text: { type: string, description: "full sentence in the active (canonical) text" }
         legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when a layer is active" }
         text_layer: { type: string, nullable: true }
         text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }

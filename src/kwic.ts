@@ -65,6 +65,7 @@ export interface KwicLine {
   author: string | null;
   uri: string | null;
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
+  text: string;               // full sentence in the active (canonical) text
   legacy_text: string | null; // reviewed source when `text` is an additive layer
   text_layer: string | null;  // e.g. modern-orthography-latn@1
   text_layer_status: string | null; // provisional or reviewed
@@ -341,6 +342,7 @@ async function kwicImpl(
       left_text: text.slice(Math.max(0, n.char_start - 48), n.char_start),
       node_text: text.slice(n.char_start, n.char_end),
       right_text: text.slice(n.char_end, n.char_end + 48),
+      text,
       translation: n.translation, dialect: n.dialect, author: n.author, uri: n.uri,
       source_slug: slugs.get(n.sentence_id) ?? null,
       legacy_text: layer?.legacy_text ?? null,
