@@ -1,0 +1,4 @@
+# Match wrangler's .tsv text rule so bun-run harnesses (scripts/shoot.mjs,
+# local screenshot servers) can import src/index.ts.
+[loader]
+".tsv" = "text"

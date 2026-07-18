@@ -57,7 +57,8 @@ def main() -> None:
     ap.add_argument("--data", required=True)
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", default="build")
-    ap.add_argument("--modern-layer", help="modern-orthography layer directory (validated against source)")
+    ap.add_argument("--modern-layer", action="append",
+                    help="modern-orthography layer directory (repeatable; validated against source)")
     ap.add_argument("--procs", type=int, default=6)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--limit", type=int, default=0)
@@ -79,6 +80,10 @@ def main() -> None:
             sid = r["id"]
             source_text = r.get("text") or ""
             resolved = layer.resolve(sid, source_text) if layer else None
+            # Bible chapter headers are excluded from the token layer (see
+            # build_tokens.py) — keep both builds aligned.
+            if sid.startswith("bible/") and sid.endswith("#0"):
+                continue
             rows.append((sid, resolved.text if resolved else source_text))
             if args.limit and len(rows) >= args.limit:
                 break

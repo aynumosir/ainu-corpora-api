@@ -52,7 +52,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True, help="path to ainu-corpora data.jsonl")
     ap.add_argument("--out", default="build", help="output dir")
-    ap.add_argument("--modern-layer", help="modern-orthography layer directory (validated against source)")
+    ap.add_argument("--modern-layer", action="append",
+                    help="modern-orthography layer directory (repeatable; validated against source)")
     ap.add_argument("--limit", type=int, default=0, help="cap sentences (0 = all, for dry runs)")
     args = ap.parse_args()
 
@@ -75,6 +76,12 @@ def main() -> None:
             sid = r["id"]
             source_text = r.get("text") or ""
             resolved = layer.resolve(sid, source_text) if layer else None
+            # Bible chapter headers ("I Korintos 1", "Apostoro ikip oma kambi
+            # 28"): sentence #0 of every bible chapter is the web source's
+            # navigation title, not corpus text — excluded from the token
+            # layer. resolve() ran first so layer completeness still holds.
+            if sid.startswith("bible/") and sid.endswith("#0"):
+                continue
             text = resolved.text if resolved else source_text
             # Three-level dialect taxonomy (already on the source rows). lv1 is
             # the Hokkaido/Sakhalin split; lv3 may be multi-valued. Keep the raw
