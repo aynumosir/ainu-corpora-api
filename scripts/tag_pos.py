@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """Phase 3: POS-enrich the corpus tokens with the ainu-morpheme-tagger model.
 
-Loads the trained spaCy `ain` pipeline (CNN tok2vec — CPU, no torch) and runs it
+Loads the trained spaCy `ain` pipeline (CNN tok2vec, no torch; CPU by default,
+GPU with `--gpu` when cupy + CUDA are available) and runs it
 over ainu-corpora data.jsonl. Because the pipeline uses the SAME `ain` tokenizer
 as Phase 1 (scripts/build_tokens.py), the token sequence + char offsets line up
 exactly, so this writes a drop-in replacement token file with POS columns filled.
@@ -16,12 +17,15 @@ Run with the tagger's own venv (has spacy + ainu_lang + the model deps):
     --data ../ainu-corpora/data.jsonl \
     --model ../ainu-morpheme-tagger/training/combined_enriched/model-best \
     --out ../ainu-corpora-api/build --procs 6
+On a CUDA machine, replace `--procs 6` with `--gpu` (single process, larger
+batches; the full corpus tags in a few minutes).
 """
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 import spacy
@@ -68,7 +72,11 @@ def main() -> None:
 
     if args.gpu:
         spacy.require_gpu()
-        # spaCy cannot combine GPU inference with n_process > 1.
+        if args.procs != 1:
+            print(f"--gpu: ignoring --procs {args.procs}, running a single process", file=sys.stderr)
+        # Single process on GPU: forked workers can't share a CUDA context, and
+        # spawn-based multiprocessing would duplicate the model per process for
+        # no throughput gain here — batching does the parallelism instead.
         args.procs = 1
 
     out = Path(args.out)
