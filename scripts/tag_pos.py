@@ -62,7 +62,14 @@ def main() -> None:
     ap.add_argument("--procs", type=int, default=6)
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--gpu", action="store_true",
+                    help="run the pipeline on GPU (requires cupy; forces a single process)")
     args = ap.parse_args()
+
+    if args.gpu:
+        spacy.require_gpu()
+        # spaCy cannot combine GPU inference with n_process > 1.
+        args.procs = 1
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

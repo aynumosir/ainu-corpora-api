@@ -115,11 +115,16 @@
   .layer-notice { margin: 12px 0 0; padding: 9px 12px; border: 1px solid var(--line);
     border-radius: 8px; color: var(--muted); background: var(--panel); font-size: 12px; }
   .layer-notice b { color: var(--accent); }
-  /* Source writing as printed — a plain line under the hit ("original" toggle),
-     above any expanded gloss layer panel. */
-  .orig-line { display: none; font-family: var(--mono); font-size: 12.5px; color: var(--muted);
-    margin-top: 5px; padding-left: 2px; }
-  body.orig .orig-line { display: block; }
+  /* Text-layer stack ("layers" toggle): the full sentence in each available
+     representation — modern (canonical) and the source writing as printed
+     (Latin or kana) — directly under the hit line, before the translation. */
+  .layers { display: none; margin: 5px 0 2px; }
+  body.show-layers .layers { display: block; }
+  .lyr { display: grid; grid-template-columns: 4.8em 1fr; gap: 8px; padding: 1px 2px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .lyr.modern { color: var(--ink); }
+  .lyr-tag { color: var(--accent); font-family: var(--ui); font-size: 10px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase; padding-top: 2px; }
   .empty { color: var(--muted); padding: 30px 4px; }
   /* Tables (collocates / distribution / forms) */
   table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 6px; }
@@ -148,7 +153,7 @@
 </div></header>
 
 <div class="wrap">
-  <div class="layer-notice"><b>Modern orthography display:</b> sources with a curated transcription layer — the Batchelor Bible and the Murasaki Sakhalin texts — are shown and searched in the modern orthography. The <b>original</b> toggle adds each result's source writing as printed.</div>
+  <div class="layer-notice"><b>Modern orthography display:</b> sources with a curated transcription layer — the Batchelor Bible and the Murasaki Sakhalin texts — are shown and searched in the modern orthography. The <b>layers</b> toggle shows each result's full sentence beside the source writing as printed.</div>
   <form id="f" autocomplete="off">
     <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · /ech?i/ · 神" autofocus>
     <button class="go" type="submit">Search</button>
@@ -191,8 +196,8 @@
         <option value="node">node</option><option value="dialect">dialect</option><option value="author">author</option>
       </select></label>
     <button type="button" class="ghost" id="t-gloss" aria-pressed="false">POS/gloss</button>
-    <button type="button" class="ghost" id="t-orig" aria-pressed="false"
-      title="Show each result's source writing as printed (Batchelor Latin, Murasaki apostrophes, …); display and search stay in the modern orthography">original</button>
+    <button type="button" class="ghost" id="t-layers" aria-pressed="false"
+      title="Show each result's full sentence in modern orthography beside the source writing as printed (Batchelor Latin, Murasaki apostrophes, kana …)">layers</button>
     <button type="button" class="ghost" id="t-csv">CSV</button>
     <button type="button" class="ghost" id="t-json">JSON</button>
   </div>
@@ -288,9 +293,13 @@ function src(d) {
   const label = [d.dialect, d.author].filter(Boolean).join(" · ");
   return d.uri ? `<a href="${esc(d.uri)}" target="_blank">${esc(label || "source")}</a>` : esc(label);
 }
-function sourceVariant(d) {
-  if (!d.legacy_text) return "";
-  return `<div class="orig-line">${esc(d.legacy_text)}</div>`;
+function layerStack(d, opts) {
+  const rows = [];
+  if (!(opts && opts.skipModern) && d.text) rows.push(["modern", d.text, "modern"]);
+  if (d.legacy_text) rows.push(["source", d.legacy_text, ""]);
+  if (!rows.length) return "";
+  return `<div class="layers">${rows.map(([tag, t, cls]) =>
+    `<div class="lyr${cls ? " " + cls : ""}"><span class="lyr-tag">${tag}</span><span>${esc(t)}</span></div>`).join("")}</div>`;
 }
 
 // ─── examples (empty-state chips, from /v1/examples) ───
@@ -380,13 +389,13 @@ function kwicTokRow(d, badge) {
   const R = (d.right||[]).map((t) => tokHtml(t, false)).join(" ");
   return `<div class="hit"><div class="kwic">
       <span class="l">${L}</span><span class="n">${N}</span><span class="r">${R}</span>
-    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`;
+    </div>${layerStack(d)}<div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div></div>`;
 }
 // classic string KWIC for grammar-filter results (left/node/right strings)
 function kwicStrRow(d, badge) {
   return `<div class="hit"><div class="kwic">
       <span class="l">${esc(d.left)}</span><span class="n">${esc(d.node)}</span><span class="r">${esc(d.right)}</span>
-    </div><div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`;
+    </div>${layerStack(d)}<div class="meta"><span class="tr">${esc(d.translation)}</span>${badge||""}<span class="src">${src(d)}</span></div></div>`;
 }
 
 // ─── curated gloss layers (ainu-corpora-annotations) ───
@@ -592,9 +601,9 @@ $("#t-gloss").addEventListener("click", () => {
   const on = document.body.classList.toggle("gloss");
   $("#t-gloss").setAttribute("aria-pressed", on);
 });
-$("#t-orig").addEventListener("click", () => {
-  const on = document.body.classList.toggle("orig");
-  $("#t-orig").setAttribute("aria-pressed", on);
+$("#t-layers").addEventListener("click", () => {
+  const on = document.body.classList.toggle("show-layers");
+  $("#t-layers").setAttribute("aria-pressed", on);
 });
 $("#sort").addEventListener("change", () => { resetOffset(); run(); });
 
@@ -714,7 +723,7 @@ async function run() {
         `<div class="hit"><div class="kwic"><span class="l">${esc(d.left_text)}</span>
           <span class="n">${(d.match||[]).map((m)=>tokHtml({s:m.s,n:m.n,p:m.p,l:m.l,cl:0},true)).join(" ")}</span>
           <span class="r">${esc(d.right_text)}</span></div>
-          <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
+          ${layerStack(d)}<div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
       markCuratedGloss(lastRows, (d) => d.sentence_id);
@@ -722,7 +731,7 @@ async function run() {
       lastRows = await get(`/v1/search?q=${encodeURIComponent(q)}&lang=any&orthography=modern&limit=${encodeURIComponent(limit)}${dialect ? `&dialect=${encodeURIComponent(dialect)}` : ""}`);
       $("#hits").innerHTML = lastRows.length ? lastRows.map((d) =>
         `<div class="hit"><div class="row-sent">${esc(d.text)}</div>
-          <div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div>${sourceVariant(d)}</div>`
+          ${layerStack(d, { skipModern: true })}<div class="meta"><span class="tr">${esc(d.translation)}</span><span class="src">${src(d)}</span></div></div>`
       ).join("") : `<div class="empty">No matches.</div>`;
       done(`${lastRows.length} result${lastRows.length === 1 ? "" : "s"} · ${KIND_LABEL[kind]}.`);
       markCuratedGloss(lastRows, (d) => d.id);

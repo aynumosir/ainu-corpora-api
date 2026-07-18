@@ -70,11 +70,14 @@ Batchelor Bible (`bible-modern-latn`) and the Murasaki-notation Sakhalin texts
 remains available as `legacy_text`; all other collections continue to use their
 source text. Plain `/v1/search` retains its historical source-text behavior.
 Opt into the active modern text with `orthography=modern`. Token endpoints
-return `text_layer`, `text_layer_status`, and `legacy_text` when a sidecar is
-active. The public UI displays layered collections in modern orthography and
-reveals each result's source writing behind the **original** toggle. The
-Bible's per-chapter navigation lines ("I Korintos 1", sentence `#0` of every
-chapter) are excluded from the token layer at build time.
+return the full active sentence as `text`, and `text_layer`,
+`text_layer_status`, `legacy_text` when a sidecar is active. The public UI
+displays layered collections in modern orthography; the **layers** toggle
+stacks each result's full sentence with its source writing as printed —
+Batchelor Latin, Murasaki apostrophes, or kana, whatever the source used. The
+Bible's per-chapter navigation lines
+("I Korintos 1", sentence `#0` of every chapter) are excluded from the token
+layer at build time.
 
 | Method · Route | Params | Returns |
 |---|---|---|

@@ -29,6 +29,7 @@ export interface ConcordanceLine {
   author: string | null;
   uri: string | null;
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
+  text: string;             // full sentence in the active (canonical) text
   legacy_text: string | null;
   text_layer: string | null;
   text_layer_status: string | null;
@@ -107,6 +108,7 @@ export async function concordance(
       left: text.slice(Math.max(0, r.a - w), r.a),
       node: text.slice(r.a, r.b),
       right: text.slice(r.b, r.b + w),
+      text,
       translation: r.translation,
       dialect: r.dialect,
       author: r.author,
@@ -196,6 +198,7 @@ export async function posSearch(
       left: text.slice(Math.max(0, r.a - w), r.a),
       node: text.slice(r.a, nodeEnd),
       right: text.slice(nodeEnd, nodeEnd + w),
+      text,
       upos: r.upos,
       lemma: r.lemma,
       translation: r.translation,
