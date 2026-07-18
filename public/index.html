@@ -291,7 +291,10 @@ function src(d) {
 }
 function layerStack(d, opts) {
   const rows = [];
-  if (!(opts && opts.skipModern) && d.text) rows.push(["modern", d.text, "modern"]);
+  // Only rows from a layered sentence get orthography tags — a plain sentence
+  // has no sidecar modern layer to announce.
+  const layered = !!(d.legacy_text || d.text_layer);
+  if (!(opts && opts.skipModern) && d.text) rows.push([layered ? "modern" : "", d.text, "modern"]);
   if (d.legacy_text) rows.push(["source", d.legacy_text, ""]);
   if (!rows.length) return "";
   return `<div class="layers">${rows.map(([tag, t, cls]) =>

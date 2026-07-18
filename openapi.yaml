@@ -34,7 +34,6 @@ components:
         document: { type: string, nullable: true }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug (https://db.aynu.org/sources/<slug>); null when the collection has no registered source" }
-        text: { type: string, description: "full sentence in the active (canonical) text" }
         legacy_text: { type: string, nullable: true, description: "Reviewed 1897 source transcription when text is an additive modern layer" }
         text_layer: { type: string, nullable: true, example: "modern-orthography-latn@1" }
         text_layer_status: { type: string, nullable: true, enum: [provisional, reviewed] }
@@ -230,7 +229,7 @@ paths:
         - { name: dialect, in: query, schema: { type: string } }
         - { name: author, in: query, schema: { type: string } }
       responses:
-        "200": { description: "StructuralLine[] in data (match[] + match_text + left_text/right_text)" }
+        "200": { description: "StructuralLine[] in data (match[] + match_text + left_text/right_text + full-sentence text, with legacy_text / text_layer / text_layer_status on layered sentences)" }
         "400": { description: "error: missing_pattern | bad_regex" }
   /v1/analytics:
     get:

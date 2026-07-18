@@ -3,6 +3,7 @@
  * search, and basic analytics. All over the same `corpus_tokens` + `sentences`
  * tables; no extra build step.
  */
+import { textLayersFor } from "./db.js";
 import { foldToken, normToken } from "./normalize.js";
 import { dialectWhere, type DialectFilter } from "./dialect.js";
 import { regexNodeKeys } from "./regex.js";
@@ -235,6 +236,9 @@ export interface StructuralLine {
   left_text: string;
   right_text: string;
   text: string;             // full sentence in the active (canonical) text
+  legacy_text: string | null;
+  text_layer: string | null;
+  text_layer_status: string | null;
   translation: string | null;
   dialect: string | null;
   author: string | null;
@@ -327,8 +331,10 @@ async function structuralImpl(
   params.push(clampLimit(opts.limit) || 50);
   const { results } = await db.prepare(sql).bind(...params).all<Record<string, unknown>>();
   if (!results?.length) return [];
+  const layers = await textLayersFor(db, results.map((r) => r.sentence_id as string));
 
   return results.map((r) => {
+    const layer = layers.get(r.sentence_id as string);
     const match = positions.map((_, i) => ({
       i: r[`i${i}`] as number,
       s: r[`s${i}`] as string,
@@ -345,6 +351,9 @@ async function structuralImpl(
       left_text: text.slice(Math.max(0, a - 40), a),
       right_text: text.slice(b, b + 40),
       text,
+      legacy_text: layer?.legacy_text ?? null,
+      text_layer: layer?.text_layer ?? null,
+      text_layer_status: layer?.text_layer_status ?? null,
       translation: (r.translation as string | null) ?? null,
       dialect: (r.dialect as string | null) ?? null,
       author: (r.author as string | null) ?? null,

@@ -116,3 +116,36 @@ test("collocations: window self-join is bounded to ±window and excludes node sl
   expect(out.collocates[0].token).toBe("ne");
   expect(typeof out.collocates[0].log_dice).toBe("number");
 });
+
+test("structural: hits carry additive text-layer provenance", async () => {
+  const hit = {
+    sentence_id: "bible/rev/003#20",
+    i0: 0, s0: "opopmaw", n0: "opopmaw", p0: "NOUN", l0: null,
+    text: "opopmaw kewtum", a: 0, b: 8,
+    translation: null, dialect: null, author: null, uri: null,
+  };
+  const layer = [{
+    id: hit.sentence_id,
+    legacy_text: "opopmau keutum",
+    text_layer: "modern-orthography-latn@1",
+    text_layer_status: "provisional",
+  }];
+  const { db } = fakeDb([[hit], layer]);
+  const out = await structural(db, { pattern: "[upos=NOUN]", limit: 5 });
+  expect(out[0].legacy_text).toBe("opopmau keutum");
+  expect(out[0].text_layer).toBe("modern-orthography-latn@1");
+  expect(out[0].text_layer_status).toBe("provisional");
+  expect(out[0].text).toBe("opopmaw kewtum");
+});
+
+test("structural: unlayered hits keep null layer fields", async () => {
+  const hit = {
+    sentence_id: "s1", i0: 0, s0: "pet", n0: "pet", p0: null, l0: null,
+    text: "pet or ta", a: 0, b: 3,
+    translation: null, dialect: null, author: null, uri: null,
+  };
+  const { db } = fakeDb([[hit], []]);
+  const out = await structural(db, { pattern: "pet", limit: 5 });
+  expect(out[0].legacy_text).toBeNull();
+  expect(out[0].text_layer).toBeNull();
+});
