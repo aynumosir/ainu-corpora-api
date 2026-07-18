@@ -112,9 +112,6 @@
   .meta .src { color: var(--muted); margin-left: auto; }
   .meta .src a { color: var(--link); text-decoration: none; }
   .row-sent { font-family: var(--mono); font-size: 14.5px; }
-  .layer-notice { margin: 12px 0 0; padding: 9px 12px; border: 1px solid var(--line);
-    border-radius: 8px; color: var(--muted); background: var(--panel); font-size: 12px; }
-  .layer-notice b { color: var(--accent); }
   /* Text-layer stack ("layers" toggle): the full sentence in each available
      representation — modern (canonical) and the source writing as printed
      (Latin or kana) — directly under the hit line, before the translation. */
@@ -153,7 +150,6 @@
 </div></header>
 
 <div class="wrap">
-  <div class="layer-notice"><b>Modern orthography display:</b> sources with a curated transcription layer — the Batchelor Bible and the Murasaki Sakhalin texts — are shown and searched in the modern orthography. The <b>layers</b> toggle shows each result's full sentence beside the source writing as printed.</div>
   <form id="f" autocomplete="off">
     <input type="text" id="q" placeholder="rayke · kamuy kor · pos:VERB · /ech?i/ · 神" autofocus>
     <button class="go" type="submit">Search</button>
@@ -197,7 +193,7 @@
       </select></label>
     <button type="button" class="ghost" id="t-gloss" aria-pressed="false">POS/gloss</button>
     <button type="button" class="ghost" id="t-layers" aria-pressed="false"
-      title="Show each result's full sentence in modern orthography beside the source writing as printed (Batchelor Latin, Murasaki apostrophes, kana …)">layers</button>
+      title="Show each result's full sentence and its source writing">layers</button>
     <button type="button" class="ghost" id="t-csv">CSV</button>
     <button type="button" class="ghost" id="t-json">JSON</button>
   </div>
