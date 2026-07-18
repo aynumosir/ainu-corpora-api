@@ -68,7 +68,9 @@ def main() -> None:
 
     if args.gpu:
         spacy.require_gpu()
-        # spaCy cannot combine GPU inference with n_process > 1.
+        # Single process on GPU: forked workers can't share a CUDA context, and
+        # spawn-based multiprocessing would duplicate the model per process for
+        # no throughput gain here — batching does the parallelism instead.
         args.procs = 1
 
     out = Path(args.out)
