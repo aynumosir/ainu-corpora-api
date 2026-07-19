@@ -237,6 +237,58 @@ export async function tokenFrequency(
   return { count: row.count, is_stopword: row.is_stopword === 1, rank: (higher?.c ?? 0) + 1 };
 }
 
+/** How many times a contiguous sequence of tokens occurs in the corpus.
+ *
+ * `token_freq` counts single tokens, so a multi-word expression like
+ * `ruwe ne` or `siri an` has no entry there and looks unattested. The token
+ * layer does carry the information: `corpus_tokens` holds one row per token
+ * with its position, so an n-gram is a chain of self-joins on consecutive
+ * `idx` within the same sentence. Matching is on `surface_fold`, the
+ * accent-insensitive key, so `ruwe ne` also finds `rúwe ne`.
+ *
+ * Returns occurrence and sentence totals; there is no rank, because the corpus
+ * holds no ranked inventory of n-grams to rank against.
+ */
+export async function ngramFrequency(
+  db: D1Database,
+  folded: string[],
+): Promise<{ count: number; sentences: number } | null> {
+  const parts = folded.filter((t) => t.length > 0);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) {
+    const row = await db
+      .prepare(
+        `SELECT count(*) AS c, count(DISTINCT sentence_id) AS s
+           FROM corpus_tokens WHERE surface_fold = ?`,
+      )
+      .bind(parts[0])
+      .first<{ c: number; s: number }>();
+    return { count: row?.c ?? 0, sentences: row?.s ?? 0 };
+  }
+  const joins = parts
+    .slice(1)
+    .map(
+      (_, i) =>
+        `JOIN corpus_tokens t${i + 1}
+           ON t${i + 1}.sentence_id = t0.sentence_id
+          AND t${i + 1}.idx = t0.idx + ${i + 1}
+          AND t${i + 1}.surface_fold = ?`,
+    )
+    .join("\n         ");
+  const row = await db
+    .prepare(
+      `SELECT count(*) AS c, count(DISTINCT t0.sentence_id) AS s
+         FROM corpus_tokens t0
+         ${joins}
+        WHERE t0.surface_fold = ?`,
+    )
+    // the joined tokens bind first (they appear earlier in the statement),
+    // then the anchor token in the WHERE clause
+    .bind(...parts.slice(1), parts[0])
+    .first<{ c: number; s: number }>();
+  return { count: row?.c ?? 0, sentences: row?.s ?? 0 };
+}
+
 /** Most-frequent tokens, descending by count (ties by first-appearance rowid).
  * Optionally drops stopwords before paging. */
 export async function frequencyList(

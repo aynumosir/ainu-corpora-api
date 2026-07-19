@@ -25,12 +25,14 @@ import {
   corpusLayerSearch,
   getMeta,
   tokenFrequency,
+  ngramFrequency,
   frequencyList,
   stopwordsList,
   isStopword,
   vocabCandidates,
   type CorpusLang,
 } from "./db.js";
+import { foldToken } from "./normalize.js";
 import { concordance, posSearch, type SortMode, type MatchMode } from "./tokens.js";
 import { kwic, kwicTotal, inflections, type NodeSort, type KwicMatch } from "./kwic.js";
 import { collocations, structural, wordAnalytics } from "./analysis.js";
@@ -130,9 +132,39 @@ app.get("/v1/meta", async (c) => {
 app.get("/v1/freq/word", async (c) => {
   const token = c.req.query("token") ?? "";
   if (!token) return fail(c, 400, "missing_token", "token is required (already normalized)");
+  // A multi-word query is an n-gram: token_freq only counts single tokens, so
+  // answer it from the positional token layer instead of reporting "not found".
+  const parts = token.trim().split(/\s+/);
+  if (parts.length > 1) {
+    const ngram = await ngramFrequency(c.get("db"), parts.map(foldToken));
+    return ok(c, {
+      token,
+      found: (ngram?.count ?? 0) > 0,
+      count: ngram?.count ?? 0,
+      sentences: ngram?.sentences ?? 0,
+      rank: null,
+      is_stopword: false,
+      unit: "ngram",
+    });
+  }
   const freq = await tokenFrequency(c.get("db"), token);
   const stop = freq ? freq.is_stopword : await isStopword(c.get("db"), token);
-  return ok(c, { token, found: freq != null, ...(freq ?? {}), is_stopword: stop });
+  return ok(c, { token, found: freq != null, ...(freq ?? {}), is_stopword: stop, unit: "token" });
+});
+
+app.get("/v1/freq/ngram", async (c) => {
+  const raw = c.req.query("tokens") ?? c.req.query("q") ?? "";
+  const parts = raw.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return fail(c, 400, "missing_tokens", "tokens is required (space-separated)");
+  if (parts.length > 5) return fail(c, 400, "ngram_too_long", "at most 5 tokens");
+  const ngram = await ngramFrequency(c.get("db"), parts.map(foldToken));
+  return ok(c, {
+    tokens: parts,
+    n: parts.length,
+    found: (ngram?.count ?? 0) > 0,
+    count: ngram?.count ?? 0,
+    sentences: ngram?.sentences ?? 0,
+  });
 });
 
 app.get("/v1/freq/list", async (c) => {

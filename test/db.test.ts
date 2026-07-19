@@ -12,6 +12,7 @@ import {
   corpusLayerSearch,
   textLayersFor,
   tokenFrequency,
+  ngramFrequency,
   frequencyList,
   stopwordsList,
   isStopword,
@@ -200,4 +201,40 @@ test("textLayersFor: degrades to an empty map on an older schema", async () => {
     },
   } as unknown as D1Database;
   expect((await textLayersFor(db, ["x#1"])).size).toBe(0);
+});
+
+test("ngramFrequency: a bigram joins the token layer on consecutive idx", async () => {
+  const { db, calls } = fakeDb([[{ c: 16350, s: 14200 }]]);
+  const got = await ngramFrequency(db, ["ruwe", "ne"]);
+  expect(calls[0].sql).toContain("FROM corpus_tokens t0");
+  expect(calls[0].sql).toContain("t1.sentence_id = t0.sentence_id");
+  expect(calls[0].sql).toContain("t1.idx = t0.idx + 1");
+  expect(calls[0].sql).toContain("t1.surface_fold = ?");
+  expect(calls[0].sql).toContain("WHERE t0.surface_fold = ?");
+  // joined tokens bind before the anchor, matching statement order
+  expect(calls[0].args).toEqual(["ne", "ruwe"]);
+  expect(got).toEqual({ count: 16350, sentences: 14200 });
+});
+
+test("ngramFrequency: a trigram chains one join per extra token", async () => {
+  const { db, calls } = fakeDb([[{ c: 3, s: 3 }]]);
+  await ngramFrequency(db, ["hine", "oka", "an"]);
+  expect(calls[0].sql).toContain("t1.idx = t0.idx + 1");
+  expect(calls[0].sql).toContain("t2.idx = t0.idx + 2");
+  expect(calls[0].args).toEqual(["oka", "an", "hine"]);
+});
+
+test("ngramFrequency: a single token counts occurrences without a join", async () => {
+  const { db, calls } = fakeDb([[{ c: 164, s: 150 }]]);
+  const got = await ngramFrequency(db, ["samake"]);
+  expect(calls[0].sql).not.toContain("JOIN");
+  expect(calls[0].args).toEqual(["samake"]);
+  expect(got).toEqual({ count: 164, sentences: 150 });
+});
+
+test("ngramFrequency: an empty sequence queries nothing", async () => {
+  const { db, calls } = fakeDb([]);
+  expect(await ngramFrequency(db, [])).toBeNull();
+  expect(await ngramFrequency(db, ["", " ".trim()])).toBeNull();
+  expect(calls.length).toBe(0);
 });
