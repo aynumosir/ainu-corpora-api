@@ -45,6 +45,22 @@ test("compileWordRegex: invalid pattern throws BadRegexError", () => {
   expect(() => compileWordRegex("  ")).toThrow(BadRegexError);
 });
 
+test("compileWordRegex: rejects nested-quantifier ReDoS patterns", () => {
+  // Catastrophic-backtracking shapes pin the Worker CPU on the vocab scan.
+  expect(() => compileWordRegex("(a+)+$")).toThrow(BadRegexError);
+  expect(() => compileWordRegex("(a*)*")).toThrow(BadRegexError);
+  expect(() => compileWordRegex("([a-z]+)*")).toThrow(BadRegexError);
+  expect(() => compileWordRegex("(a+){2,}")).toThrow(BadRegexError);
+  // Benign patterns still compile.
+  expect(compileWordRegex("(ab)+").test("abab")).toBe(true);
+  expect(compileWordRegex("a+").test("aaa")).toBe(true);
+});
+
+test("compileWordRegex: rejects overly long patterns", () => {
+  expect(() => compileWordRegex("a".repeat(201))).toThrow(BadRegexError);
+  expect(() => compileWordRegex("a".repeat(200))).not.toThrow();
+});
+
 // ── requiredLiteral ──
 test("requiredLiteral: guaranteed literal runs", () => {
   expect(requiredLiteral("ech?i")).toBe("ec");     // h optional → run breaks before it

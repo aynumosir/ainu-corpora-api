@@ -33,10 +33,24 @@ export class BadRegexError extends Error {
 
 /** Compile a user word-regex: case-insensitive, unanchored. The `u` flag is
  * preferred (correct casefolding over the full alphabet) but some legacy
- * patterns are only valid without it, so fall back before rejecting. */
+ * patterns are only valid without it, so fall back before rejecting.
+ *
+ * Rejects patterns that can cause catastrophic backtracking in the
+ * (non-linear-time) JS regex engine — a quantified group whose body already
+ * contains a quantifier, e.g. `(a+)+`, `(a*)*`, `([a-z]+)*`, `(a+){2,}`.
+ * These would pin the Worker CPU on the vocab scan (issue #24 / ReDoS). */
+const MAX_REGEX_LEN = 200;
+const NESTED_QUANTIFIER = /\([^()]*(?:[+*]|\{\d+,?\d*\})[^()]*\)(?:[+*]|\{\d+,?\d*\})/;
+
 export function compileWordRegex(source: string): RegExp {
   const src = source.trim();
   if (!src) throw new BadRegexError(source, "empty pattern");
+  if (src.length > MAX_REGEX_LEN) {
+    throw new BadRegexError(source, `pattern too long (max ${MAX_REGEX_LEN} chars)`);
+  }
+  if (NESTED_QUANTIFIER.test(src)) {
+    throw new BadRegexError(source, "nested quantifiers can cause catastrophic backtracking");
+  }
   try {
     return new RegExp(src, "iu");
   } catch {
