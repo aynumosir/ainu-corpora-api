@@ -289,7 +289,16 @@ function orthographicVariants(key, m) {
   return [...out];
 }
 function keyCandidates(m) {
-  const out = new Set();
+  // key string -> orthographic provenance. A form generated only by
+  // orthographicVariants (the c/s -> ch/sh, ay -> ai respellings) is a
+  // pre-modern spelling guess; the same string also reached as a lemma,
+  // allomorph, or lexical equivalent is attested and takes the flag back to
+  // false. Returns { key, orthographic } so consumers can drop guesses.
+  const out = new Map();
+  const mark = (key, orthographic) => {
+    if (!key) return;
+    if (!out.has(key) || (!orthographic && out.get(key))) out.set(key, orthographic);
+  };
   const keys = [m.id, m.lemma];
   // IMPORTANT: do NOT blindly expose bare suffix/prefix allomorphs as corpus
   // token gloss keys. Example: the causative suffix -e has allomorph "te", but
@@ -302,8 +311,8 @@ function keyCandidates(m) {
     if (!k) continue;
     const s = String(k);
     for (const equivalent of equivalentForms(s)) {
-      out.add(equivalent);
-      for (const v of orthographicVariants(equivalent, m)) out.add(v);
+      mark(equivalent, false);
+      for (const v of orthographicVariants(equivalent, m)) mark(v, true);
     }
     // NOTE: we deliberately do NOT strip the leading dash off bound affixes to
     // expose them as bare token keys. A bare corpus token is a free word, not a
@@ -314,7 +323,7 @@ function keyCandidates(m) {
     // aliases (p/pe/no NMLZ/ADVZ, utar, irukay) are injected explicitly via
     // forceFrom() below at a curated priority.
   }
-  return [...out].filter(Boolean);
+  return [...out].filter(([key]) => key).map(([key, orthographic]) => ({ key, orthographic }));
 }
 
 function recordFromEntry(m, key, pri = priority(m, key)) {
@@ -381,13 +390,14 @@ for (const m of rows) {
   const gloss = cleanGloss(first(m.glosses_en));
   const glossJp = first(m.glosses_jp);
   if (!gloss && !glossJp && !posDisplay(m, gloss) && m.category !== "pers") continue;
-  for (const key of keyCandidates(m)) {
+  for (const { key, orthographic } of keyCandidates(m)) {
     const direct = foldToken(key) === foldToken(m.id ?? "") || foldToken(key) === foldToken(m.lemma ?? "") || (m.allomorphs ?? []).some((a) => foldToken(a) === foldToken(key));
     // A directly-attested form must always outrank a generated orthographic
     // variant of some other word: e.g. ora “then” (direct) must beat the
     // epenthetic `or`+a “place” variant, even though `or` is more frequent. The
     // penalty therefore has to exceed the whole frequency/well-formedness range.
     const rec = recordFromEntry(m, key, priority(m, key) + (direct ? 0 : -50_000_000));
+    if (rec && orthographic) rec.orthographic_variant = true;
     putBest(rec);
     if (direct) addCandidate(rec); // only attested readings, not orthographic guesses
     // A bound affix never WINS a bare token slot (that was the hijack trap), but
