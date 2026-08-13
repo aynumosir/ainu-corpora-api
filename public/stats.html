@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aynu kampisos — corpus statistics</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --panel: #ffffff; --ink: #1c1a17; --muted: #6b645a;
+    --line: #e7e2d8; --accent: #b4532a; --accent-soft: #f3e2d8;
+    --node-bg: #fde9b8; --node-ink: #5a3a00; --link: #9c4a23;
+    --chip: #f0ece2; --pos: #2f6f6a; --pos-bg: #e3efed; --bar: #d9b48f;
+    --mono: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+    --ui: system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    /* register palette — categorical, fixed order, CVD-validated on both surfaces */
+    --reg-oral: #b4532a; --reg-scripture: #00836f; --reg-press: #3e6db8;
+    --reg-social: #b52e70; --reg-pedagogy: #a0781a; --reg-dictionary: #6b53c0;
+    --reg-conversation: #5b7d20; --reg-other: #7c7264;
+    --seg-label: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16140f; --panel: #1f1c16; --ink: #ece7dd; --muted: #9a9285;
+      --line: #322d24; --accent: #e08a5b; --accent-soft: #2c211a;
+      --node-bg: #4a3a18; --node-ink: #ffe6a8; --link: #e6a072;
+      --chip: #2a261e; --pos: #8fd0c8; --pos-bg: #1d2a28; --bar: #6b4f30;
+      --reg-oral: #cf6f3d; --reg-scripture: #1f9e8e; --reg-press: #5b8fe3;
+      --reg-social: #c2607f; --reg-pedagogy: #bd8524; --reg-dictionary: #8f7ade;
+      --reg-conversation: #86a03f; --reg-other: #98917f;
+      --seg-label: #16140f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); line-height: 1.5; }
+  header { padding: 16px 22px 12px; border-bottom: 1px solid var(--line); }
+  header .wrap { display: flex; align-items: baseline; gap: 16px; }
+  h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; }
+  h1 a { color: inherit; text-decoration: none; }
+  h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+  header nav { margin-left: auto; font-size: 13px; }
+  header nav a { color: var(--link); text-decoration: none; }
+  header nav a:hover { text-decoration: underline; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px; }
+
+  /* sticky section nav */
+  #subnav { position: sticky; top: 0; z-index: 30; background: var(--bg);
+    border-bottom: 1px solid var(--line); }
+  #subnav .wrap { display: flex; gap: 4px; align-items: center; overflow-x: auto;
+    padding-top: 7px; padding-bottom: 7px; scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 94%, transparent); }
+  #subnav a { flex: none; color: var(--muted); text-decoration: none; font-size: 13px;
+    padding: 4px 11px; border-radius: 999px; }
+  #subnav a.on { color: var(--ink); background: var(--chip); }
+  #pinchip { flex: none; margin-left: auto; display: none; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink); background: var(--chip); border: 1px solid var(--line);
+    border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  #pinchip .dot { width: 9px; height: 9px; border-radius: 50%; }
+  #pinchip .x { color: var(--muted); font-weight: 700; }
+  body[data-pin] #pinchip { display: inline-flex; }
+
+  main section { margin-top: 68px; }
+  main section:first-child { margin-top: 34px; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; letter-spacing: .04em;
+    font-variant-caps: all-small-caps; }
+  h2 .no { font-family: var(--mono); color: var(--muted); font-weight: 400; margin-right: 8px;
+    font-variant-caps: normal; font-size: 13px; }
+  .lede { font-size: 15.5px; max-width: 68ch; margin: 4px 0 18px; }
+  .footnote { color: var(--muted); font-size: 12.5px; margin-top: 10px; max-width: 78ch; }
+  .footnote a { color: var(--link); }
+  a.w { color: inherit; font-family: var(--mono); text-decoration: none; }
+  a.w:hover { color: var(--link); text-decoration: underline; }
+
+  /* hero */
+  #overview .kicker { font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; flex-wrap: wrap; }
+  #overview .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin: 18px 0 26px; }
+  @media (max-width: 720px) { #overview .grid { grid-template-columns: 1fr 1fr; } }
+  .stat .v { font-family: var(--mono); font-weight: 600; font-size: clamp(1.7rem, 4.6vw, 3rem);
+    line-height: 1.1; }
+  .stat .l { font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin-top: 6px; }
+  .stat .c { font-size: 12.5px; color: var(--muted); max-width: 26ch; margin-top: 2px; }
+
+  /* corpus speaks */
+  #speaks { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 22px; position: relative; }
+  #speaks .top { display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
+  #speaks .top .coll { color: var(--muted); }
+  #speaks .nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+  #speaks .nav button { background: none; border: 0; color: var(--muted); font-size: 16px;
+    cursor: pointer; padding: 8px 12px; border-radius: 8px; }
+  #speaks .nav button:hover { background: var(--chip); color: var(--ink); }
+  #speaks .dots { display: inline-flex; gap: 5px; margin: 0 4px; }
+  #speaks .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+  #speaks .dots i.on { background: var(--muted); }
+  #speaks .sent { font-family: var(--mono); font-size: 15.5px; line-height: 1.7; margin: 10px 0 2px;
+    transition: opacity .25s; }
+  #speaks .sent b { color: var(--accent); }
+  #speaks .tr { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; transition: opacity .25s; }
+  #speaks .go { font-size: 12.5px; }
+  #speaks .go a { color: var(--link); text-decoration: none; }
+  #speaks .go a:hover { text-decoration: underline; }
+  .rdot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .rlabel { font-weight: 600; }
+  .rja { color: var(--muted); }
+
+  /* composition strip */
+  .stripwrap { position: relative; padding-top: 36px; }
+  #strip { display: flex; gap: 2px; height: 30px; border-radius: 5px; overflow: hidden; }
+  #strip .seg { position: relative; min-width: 2px; cursor: pointer; }
+  #strip .seg .il { position: absolute; inset: 0; display: flex; align-items: center;
+    padding-left: 10px; font-size: 11.5px; color: var(--seg-label); white-space: nowrap; overflow: hidden; }
+  .striplabels { position: absolute; top: 0; left: 0; right: 0; height: 30px; }
+  .striplabels span { position: absolute; transform: translateX(-50%); font-size: 10.5px;
+    color: var(--muted); white-space: nowrap; }
+  .striplabels span.rowb { top: 15px; }
+  .striplabels span.rowa i { height: 22px; }
+  .striplabels span i { display: block; width: 1px; height: 7px; background: var(--line);
+    margin: 1px auto 0; }
+  @media (max-width: 899px) { .striplabels { display: none; } .stripwrap { padding-top: 0; } }
+  body[data-pin] #strip .seg { opacity: .45; }
+  body[data-pin] #strip .seg.pinned { opacity: 1; outline: 2px solid var(--ink); outline-offset: 1px; }
+
+  /* bar lists */
+  .seg-ctl { display: inline-flex; gap: 2px; background: var(--chip); border: 1px solid var(--line);
+    border-radius: 999px; padding: 2px; margin: 14px 0 10px; }
+  .seg-ctl button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px;
+    padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+  .seg-ctl button[aria-pressed=true] { background: var(--panel); color: var(--ink); font-weight: 600;
+    box-shadow: 0 0 0 1px var(--line); }
+  .rows { display: flex; flex-direction: column; gap: 9px; }
+  .brow { display: grid; grid-template-columns: 188px 1fr; gap: 10px; align-items: center;
+    cursor: pointer; }
+  .brow .lab { font-size: 13px; display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
+  .brow .lab .rdot { margin-top: 5px; }
+  .brow .lab .rja { font-size: 11px; }
+  .brow .track { position: relative; height: 22px; align-self: start; margin-top: 1px; }
+  .brow .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 3px 3px 0; }
+  .brow .val { position: absolute; top: 50%; transform: translateY(-50%);
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .brow .val.in { transform: translate(-100%, -50%); color: var(--seg-label); }
+  .brow .note { font-size: 12px; color: var(--muted); }
+  @media (max-width: 899px) { .brow .note { display: none; } }
+  body[data-pin] .brow { opacity: .5; }
+  body[data-pin] .brow.pinned { opacity: 1; }
+  .brow.pinned .lab { font-weight: 600; }
+  .scrollx { overflow-x: auto; }
+  .scrollx > * { min-width: 540px; }
+
+  /* dialect groups */
+  .dgroup { margin-top: 16px; }
+  .dgroup h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 8px; font-weight: 600; }
+  .dgroup .brow { grid-template-columns: 210px 1fr; cursor: default; }
+  .dgroup .fill { background: var(--bar); }
+  .brow .val.ind { transform: translate(-100%, -50%); color: var(--ink); }
+  .dgroup .lab .rja { font-size: 12.5px; color: var(--ink); }
+  .dgroup .lab .rom { color: var(--muted); font-size: 11.5px; }
+
+  /* lexicon */
+  #lexgrid { display: grid; grid-template-columns: 1fr; gap: 26px; }
+  @media (min-width: 900px) { #lexgrid { grid-template-columns: 2fr 1fr; align-items: start; } }
+  #zipf { width: 100%; height: auto; display: block; }
+  #zipf text { font-family: var(--ui); font-size: 11px; fill: var(--muted); }
+  #zipf text.ann { font-family: var(--mono); font-size: 12px; fill: var(--ink); }
+  #zipf .grid { stroke: var(--line); stroke-width: 1; }
+  #zipf .curve { stroke: var(--ink); stroke-width: 1.6; fill: none; }
+  #zipf .ideal { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 5 4; }
+  #zipf .leader { stroke: var(--line); stroke-width: 1; }
+  .callouts { display: flex; flex-direction: column; gap: 18px; }
+  .callouts .stat .v { font-size: clamp(1.4rem, 3vw, 2rem); }
+
+  /* fingerprints */
+  #histgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 999px) { #histgrid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 639px) { #histgrid { grid-template-columns: 1fr; } }
+  .histpanel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px 8px; cursor: pointer; }
+  .histpanel .hd { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
+  .histpanel .n { color: var(--muted); font-size: 11px; font-weight: 400; margin: 1px 0 6px 16px; }
+  .histpanel svg { width: 100%; height: auto; display: block; }
+  .histpanel text { font-family: var(--mono); font-size: 9.5px; fill: var(--muted); }
+  body[data-pin] .histpanel { opacity: .55; }
+  body[data-pin] .histpanel.pinned { opacity: 1; outline: 2px solid var(--ink); outline-offset: -1px; }
+
+  /* register chips (04b / 05) */
+  .regchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+  .regchips button { display: inline-flex; align-items: center; gap: 6px; background: var(--chip);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; font: inherit;
+    font-size: 12.5px; color: var(--ink); cursor: pointer; }
+  .regchips button[aria-pressed=true] { outline: 2px solid var(--ink); outline-offset: -1px;
+    font-weight: 600; }
+
+  .phrasegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; }
+  @media (max-width: 719px) { .phrasegrid { grid-template-columns: 1fr; } }
+  .phrasegrid h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin: 8px 0 4px; font-weight: 600; }
+  .phrase { display: flex; align-items: baseline; gap: 8px; height: 27px; font-size: 13px; }
+  .phrase .dots2 { flex: 1; border-bottom: 1px dotted var(--line); }
+  .phrase .n { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+  /* keyness dumbbells */
+  #keyviz svg { width: 100%; height: auto; display: block; }
+  #keyviz text { font-family: var(--ui); font-size: 11px; fill: var(--muted); }
+  #keyviz text.w { font-family: var(--mono); font-size: 13px; fill: var(--ink); }
+  #keyviz text.fx { font-family: var(--mono); font-size: 11px; }
+  #keyviz .grid { stroke: var(--line); stroke-width: 1; }
+  .legend { display: flex; gap: 18px; align-items: center; font-size: 12px; color: var(--muted);
+    margin-top: 6px; flex-wrap: wrap; }
+  .legend .k { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .dotk { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* heatmap */
+  .hmwrap { overflow-x: auto; }
+  table.hm { border-collapse: collapse; min-width: 680px; width: 100%; font-size: 12px; }
+  table.hm th { color: var(--muted); font-weight: 600; text-align: right; padding: 6px 8px;
+    cursor: pointer; white-space: nowrap; user-select: none; }
+  table.hm th:first-child { text-align: left; cursor: default; }
+  table.hm td { text-align: right; padding: 0; }
+  table.hm td .cell { display: block; padding: 8px; font-family: var(--mono); font-size: 11.5px;
+    border: 1px solid var(--bg); }
+  table.hm td.s3 .cell, table.hm td.s4 .cell { color: var(--seg-label); }
+  table.hm .rl { display: flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap;
+    padding: 6px 10px 6px 0; cursor: pointer; }
+  body[data-pin] table.hm tr { opacity: .55; }
+  body[data-pin] table.hm tr.pinned, body[data-pin] table.hm tr.hd { opacity: 1; }
+  .hmlegend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted);
+    margin-top: 8px; }
+  .hmlegend .sw { width: 26px; height: 12px; display: inline-block; border-radius: 2px; }
+
+  /* collections table */
+  .tablewrap { overflow: auto; max-height: 620px; border: 1px solid var(--line); border-radius: 8px; }
+  table.data { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 760px; }
+  table.data th, table.data td { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line); }
+  table.data thead th { position: sticky; top: 0; background: var(--panel); color: var(--muted);
+    font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; z-index: 2; }
+  table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums;
+    font-family: var(--mono); }
+  table.data td { background: var(--panel); }
+  .regcell { display: inline-flex; align-items: center; gap: 6px; background: var(--chip);
+    border-radius: 999px; padding: 1px 9px; font-size: 11.5px; white-space: nowrap; cursor: pointer; }
+  body[data-pin] table.data tbody tr { opacity: .55; }
+  body[data-pin] table.data tbody tr.pinned { opacity: 1; }
+  table.data tbody tr.pinned td:first-child { box-shadow: inset 3px 0 0 var(--pincolor, var(--accent)); }
+
+  /* table views */
+  details.tview { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  details.tview summary { cursor: pointer; width: fit-content; }
+  details.tview table { border-collapse: collapse; margin-top: 8px; font-size: 12.5px; }
+  details.tview th, details.tview td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; }
+  details.tview td.num, details.tview th.num { text-align: right; font-family: var(--mono);
+    font-variant-numeric: tabular-nums; }
+
+  /* methods, footer */
+  #methods { border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 12.5px; }
+  #methods ul { margin: 6px 0 0; padding-left: 18px; }
+  #methods li { margin: 3px 0; }
+  #methods a { color: var(--link); }
+  footer { color: var(--muted); font-size: 12px; padding: 18px 0 40px; border-top: 1px solid var(--line);
+    margin-top: 48px; }
+  footer a { color: var(--link); }
+
+  /* tooltip */
+  #tip { position: fixed; z-index: 99; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 6px; box-shadow: 0 4px 16px rgb(0 0 0 / .14); padding: 7px 10px; font-size: 12px;
+    max-width: 280px; pointer-events: none; display: none; }
+  #tip b { font-family: var(--mono); }
+  #tip .m { color: var(--muted); }
+
+  /* reveal */
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .3s; }
+    .reveal.in { opacity: 1; transform: none; }
+  }
+  #loaderr { display: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 22px; margin-top: 40px; }
+  #loaderr button { background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 16px; font: inherit; cursor: pointer; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1><a href="/">aynu kampisos hunara</a> <small>Ainu corpus statistics</small></h1>
+  <nav><a href="/">search →</a></nav>
+</div></header>
+
+<div id="subnav"><div class="wrap">
+  <a href="#overview" class="on">Overview</a>
+  <a href="#registers">Registers</a>
+  <a href="#dialects">Dialects</a>
+  <a href="#lexicon">Lexicon</a>
+  <a href="#fingerprints">Fingerprints</a>
+  <a href="#keywords">Signature words</a>
+  <a href="#grammar">Grammar mix</a>
+  <a href="#collections">Collections</a>
+  <button id="pinchip" type="button" title="Unpin"><span class="dot"></span><span class="pl"></span><span class="x">×</span></button>
+</div></div>
+
+<main class="wrap">
+
+<section id="overview">
+  <div class="kicker"><span>Corpus statistics · 統計</span><span id="snapshot"></span></div>
+  <div class="grid">
+    <div class="stat"><div class="v" data-n="1763691">1,763,691</div><div class="l">tokens</div>
+      <div class="c">every word and mark, across two script layers</div></div>
+    <div class="stat"><div class="v" data-n="209790">209,790</div><div class="l">sentences</div>
+      <div class="c">oral narratives, print, and social media</div></div>
+    <div class="stat"><div class="v" data-n="48682">48,682</div><div class="l">word forms</div>
+      <div class="c" id="c-hapax">26,920 of them occur exactly once</div></div>
+    <div class="stat"><div class="v" data-n="44">44</div><div class="l">collections</div>
+      <div class="c">grouped into 8 registers below</div></div>
+  </div>
+  <div id="speaks" hidden>
+    <div class="top">
+      <span class="rdot"></span><span class="rlabel"></span><span class="rja"></span>
+      <span class="coll"></span>
+      <span class="nav"><button type="button" data-d="-1" aria-label="Previous sentence">‹</button><span class="dots"></span><button type="button" data-d="1" aria-label="Next sentence">›</button></span>
+    </div>
+    <div class="sent" lang="ain"></div>
+    <div class="tr" lang="ja"></div>
+    <div class="go"></div>
+  </div>
+  <noscript><p class="footnote">The charts on this page need JavaScript. The corpus itself is searchable at <a href="/">corpus.aynu.org</a>.</p></noscript>
+</section>
+
+<div id="loaderr"><div>Statistics data could not be loaded (stats.json).</div><button type="button" onclick="boot()">Retry</button></div>
+
+<section id="registers" class="reveal" hidden>
+  <h2><span class="no">01</span>Registers</h2>
+  <p class="lede">Seven in ten sentences are oral literature — uwepeker, kamuy yukar and other
+  narratives recorded from the last generations of native speakers. The modern registers are
+  small beside that, and they are where Ainu is being written today.</p>
+  <div class="stripwrap"><div class="striplabels"></div><div id="strip"></div></div>
+  <p class="footnote">Share of word tokens. Click a segment to pin a register across the whole page.</p>
+  <div class="seg-ctl" id="regmetric" role="group" aria-label="Metric">
+    <button type="button" data-m="sentences" aria-pressed="true">Sentences</button>
+    <button type="button" data-m="words" aria-pressed="false">Words</button>
+    <button type="button" data-m="types" aria-pressed="false">Word forms</button>
+  </div>
+  <div class="scrollx"><div class="rows" id="regbars"></div></div>
+  <details class="tview"><summary>View as table</summary><div id="regtable"></div></details>
+</section>
+
+<section id="dialects" class="reveal" hidden>
+  <h2><span class="no">02</span>Dialects</h2>
+  <p class="lede">Two Hokkaidō varieties — Saru and Shizunai — supply well over half of the
+  corpus. The Sakhalin record is thin but present, from Asai Take's folktales to Piłsudski-era
+  letters.</p>
+  <div class="scrollx"><div id="dialbars"></div></div>
+  <p class="footnote">Sentences per dialect, as attributed in the source metadata; sentences
+  with no dialect record are grouped at the end.</p>
+</section>
+
+<section id="lexicon" class="reveal" hidden>
+  <h2><span class="no">03</span>The lexicon</h2>
+  <p class="lede" id="lexlede"></p>
+  <div id="lexgrid">
+    <div>
+      <svg id="zipf" viewBox="0 0 1000 430" role="img" aria-label="Rank–frequency plot of the 1,000 commonest word forms on log–log axes"></svg>
+      <details class="tview"><summary>View as table (top 50)</summary><div id="zipftable"></div></details>
+    </div>
+    <div class="callouts" id="callouts"></div>
+  </div>
+  <p class="footnote">Forms are counted as written: clitics keep their <code>=</code>
+  (<span class="w">a=</span>, <span class="w">=an</span>), and spelling variants folded only for
+  accent marks. The curve stops at rank 1,000.</p>
+</section>
+
+<section id="fingerprints" class="reveal" hidden>
+  <h2><span class="no">04</span>Fingerprints</h2>
+  <p class="lede">A sentence of oral epic and a sentence of Twitter Ainu feel different long
+  before you can say why. Sentence rhythm is the first measurable reason; favourite phrases are
+  the second.</p>
+  <div id="histgrid"></div>
+  <p class="footnote">Each panel: share of the register's sentences by length in word tokens,
+  bins of two; the gray silhouette behind every panel is the whole corpus, so shapes compare
+  directly. The tick marks the register's mean. Click a panel to pin.</p>
+  <h3 style="margin:26px 0 0; font-size:14px;">Signature phrases</h3>
+  <div class="regchips" id="chips-phrases" role="group" aria-label="Register"></div>
+  <div class="phrasegrid" id="phrases"></div>
+  <p class="footnote">The register's most frequent word sequences (raw counts over consecutive
+  tokens). For the words that distinguish it from the rest of the corpus, see
+  <a href="#keywords">signature words</a>.</p>
+</section>
+
+<section id="keywords" class="reveal" hidden>
+  <h2><span class="no">05</span>Signature words</h2>
+  <p class="lede">Keyness scores every word by how much more often one register uses it than
+  the rest of the corpus does. High scorers are the register's own vocabulary: what it keeps
+  reaching for.</p>
+  <div class="regchips" id="chips-key" role="group" aria-label="Register"></div>
+  <div class="seg-ctl" id="keycls" role="group" aria-label="Word class">
+    <button type="button" data-c="content" aria-pressed="true">Content</button>
+    <button type="button" data-c="function" aria-pressed="false">Function</button>
+    <button type="button" data-c="all" aria-pressed="false">All</button>
+  </div>
+  <div id="keyviz"></div>
+  <div class="legend" id="keylegend"></div>
+  <div id="keynote" class="footnote"></div>
+  <details class="tview"><summary>View as table</summary><div id="keytable"></div></details>
+</section>
+
+<section id="grammar" class="reveal" hidden>
+  <h2><span class="no">06</span>Grammar mix</h2>
+  <p class="lede" id="poslede"></p>
+  <div class="hmwrap" id="hm"></div>
+  <div class="hmlegend" id="hmlegend"></div>
+  <p class="footnote">Percent of the register's POS-tagged tokens (Universal Dependencies tags,
+  machine-tagged). Click a column header to sort the registers by that tag.</p>
+</section>
+
+<section id="collections" class="reveal" hidden>
+  <h2><span class="no">07</span>Collections</h2>
+  <p class="lede">Every source in the corpus, one row each — the receipts for everything above.</p>
+  <div class="tablewrap"><table class="data" id="colltable"></table></div>
+  <p class="footnote">Mean length is word tokens per sentence. Dialect shows the collection's
+  most frequent attribution. Click a register chip to pin.</p>
+</section>
+
+<section id="methods" class="reveal" hidden>
+  <h3 style="margin:0; font-size:13px;">Methods &amp; data</h3>
+  <ul>
+    <li>Every sentence inherits the register of its source collection; the
+      <a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/data/collection_registers.json">collection→register table</a>
+      is part of this repository.</li>
+    <li>Word-level statistics count Latin-script tokens; forms are compared accent-insensitively
+      and displayed in their commonest spelling.</li>
+    <li>Keyness: log-likelihood G² (Dunning 1993), each register against the rest of the corpus,
+      with rates per million tokens. Words need 20 corpus occurrences and 5 in the register to
+      qualify; single-letter tokens are excluded, since speaker labels and list markers dominate
+      them.</li>
+    <li>Function words are flagged from the tagger: closed-class UD tags and clitics.</li>
+    <li>N-grams follow the token layer: consecutive tokens inside one sentence, clitics counted
+      as tokens.</li>
+    <li>Sentence length counts word tokens (Latin and kana script); histogram bins of two,
+      overflow at 31+.</li>
+    <li>POS tags: Universal Dependencies, machine-tagged; <span id="m-tagged"></span> of tokens
+      carry a tag.</li>
+    <li>Zipf series truncated at rank 1,000.</li>
+    <li>Snapshot <span id="m-snapshot"></span> · data:
+      <a href="/stats.json">stats.json</a> · every chart is inline SVG/CSS drawn at load.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  Data: <a href="https://github.com/aynumosir/ainu-corpora" target="_blank">ainu-corpora</a> ·
+  API: <a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/openapi.yaml" target="_blank">/v1</a> ·
+  POS machine-tagged (UD) ·
+  <a href="/">corpus search</a>
+</div></footer>
+
+<div id="tip" role="status"></div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (n) => (+n).toLocaleString("en-US");
+const pct = (x) => { const p = 100 * x; return p >= 10 ? Math.round(p) + "%" : p >= 1 ? p.toFixed(1) + "%" : "<1%"; };
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const REG_ORDER = ["oral", "scripture", "press", "social", "pedagogy", "dictionary", "conversation", "other"];
+const REG_COLOR = Object.fromEntries(REG_ORDER.map((r) => [r, `var(--reg-${r})`]));
+const ROMAJI = { "沙流": "Saru", "静内": "Shizunai", "鵡川": "Mukawa", "千歳": "Chitose",
+  "幌別": "Horobetsu", "十勝": "Tokachi", "虻田": "Abuta", "石狩": "Ishikari", "様似": "Samani",
+  "白老": "Shiraoi", "旭川": "Asahikawa", "釧路": "Kushiro", "美幌": "Bihoro", "白糠": "Shiranuka",
+  "浦河": "Urakawa", "名寄": "Nayoro", "沙流・千歳": "Saru–Chitose", "樺太": "Sakhalin",
+  "北海道": "Hokkaidō", "石狩川": "Ishikari river" };
+const REGION_LABEL = { "北海道": "Hokkaidō", "樺太": "Sakhalin", "unspecified": "No dialect record" };
+
+let D = null;           // stats.json
+let pin = null;         // pinned register id or null
+let keyReg = "oral";    // register selected in 04b/05
+let keyCls = "content"; // content | function | all
+let regMetric = "sentences";
+
+const searchHref = (q) => "/?q=" + encodeURIComponent(q);
+const regLabel = (r) => D.registers[r]?.label ?? r;
+const regJa = (r) => D.registers[r]?.ja ?? "";
+
+// ── tooltip (one, shared; focus mirrors hover) ──────────────────────────────
+const tip = $("#tip");
+function showTip(html, x, y) {
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(x + 12, innerWidth - r.width - 8) + "px";
+  tip.style.top = (y + 14 + r.height > innerHeight ? y - r.height - 10 : y + 14) + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+document.addEventListener("pointermove", (e) => {
+  const el = e.target.closest?.("[data-tip]");
+  if (el) showTip(el.dataset.tip, e.clientX, e.clientY); else hideTip();
+});
+document.addEventListener("focusin", (e) => {
+  const el = e.target.closest?.("[data-tip]");
+  if (el) { const r = el.getBoundingClientRect(); showTip(el.dataset.tip, r.left, r.bottom); }
+});
+document.addEventListener("focusout", hideTip);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideTip(); });
+addEventListener("scroll", hideTip, { passive: true });
+
+// ── pinning ────────────────────────────────────────────────────────────────
+function setPin(r) {
+  pin = r;
+  if (r) { document.body.dataset.pin = r; localStorage.setItem("aynu-stats-pin", r); history.replaceState(null, "", "#pin=" + r); }
+  else { delete document.body.dataset.pin; localStorage.removeItem("aynu-stats-pin"); history.replaceState(null, "", location.pathname); }
+  document.querySelectorAll("[data-reg]").forEach((el) => el.classList.toggle("pinned", el.dataset.reg === r));
+  if (r) {
+    $("#pinchip .dot").style.background = REG_COLOR[r];
+    $("#pinchip .pl").textContent = regLabel(r);
+    if (r !== keyReg) { keyReg = r; renderPhrases(); renderKeyness(); syncChips(); }
+  }
+}
+$("#pinchip").addEventListener("click", () => setPin(null));
+const togglePin = (r) => setPin(pin === r ? null : r);
+
+// ── boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  $("#loaderr").style.display = "none";
+  try {
+    D = await (await fetch("stats.json")).json();
+  } catch (e) {
+    $("#loaderr").style.display = "block";
+    return;
+  }
+  renderHero();
+  renderSpeaks();
+  renderStrip();
+  renderRegBars();
+  renderDialects();
+  renderLexicon();
+  renderHists();
+  renderChips();
+  renderPhrases();
+  renderKeyness();
+  renderHeatmap();
+  renderCollections();
+  renderMethods();
+  document.querySelectorAll("main section[hidden]").forEach((s) => (s.hidden = false));
+  revealObserver();
+  navObserver();
+  const h = location.hash.match(/#pin=(\w+)/);
+  const saved = h ? h[1] : localStorage.getItem("aynu-stats-pin");
+  if (saved && D.registers[saved]) setPin(saved);
+}
+
+// ── hero ───────────────────────────────────────────────────────────────────
+function renderHero() {
+  $("#snapshot").textContent = "snapshot " + D.generated;
+  const t = D.totals;
+  const vals = [t.tokens, t.sentences, t.types, t.collections];
+  document.querySelectorAll("#hero, #overview").forEach(() => {});
+  document.querySelectorAll("#overview .stat .v").forEach((el, i) => { el.dataset.n = vals[i]; });
+  $("#c-hapax").textContent = fmt(t.hapax) + " of them occur exactly once";
+  const io = new IntersectionObserver((es) => {
+    es.forEach((en) => {
+      if (!en.isIntersecting) return;
+      io.unobserve(en.target);
+      const n = +en.target.dataset.n;
+      if (REDUCED) { en.target.textContent = fmt(n); return; }
+      const t0 = performance.now();
+      const step = (t1) => {
+        const k = Math.min(1, (t1 - t0) / 900);
+        en.target.textContent = fmt(Math.round(n * (1 - Math.pow(1 - k, 3))));
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  });
+  document.querySelectorAll("#overview .stat .v").forEach((el) => io.observe(el));
+}
+
+// ── the corpus speaks ──────────────────────────────────────────────────────
+let spI = 0, spTimer = null;
+function renderSpeaks() {
+  if (!D.samples?.length) return;
+  const box = $("#speaks");
+  box.hidden = false;
+  $("#speaks .dots").innerHTML = D.samples.map((_, i) => `<i data-i="${i}"></i>`).join("");
+  box.querySelectorAll(".nav button").forEach((b) =>
+    b.addEventListener("click", () => { spGo(spI + +b.dataset.d); spHold(); }));
+  box.addEventListener("pointerenter", spStop);
+  box.addEventListener("pointerleave", spStart);
+  box.addEventListener("focusin", spStop);
+  box.addEventListener("focusout", spStart);
+  spGo(0);
+  spStart();
+}
+function spGo(i) {
+  const n = D.samples.length;
+  spI = ((i % n) + n) % n;
+  const s = D.samples[spI];
+  const box = $("#speaks");
+  const focus = s.focus;
+  const rx = new RegExp("(^|[\\s(（「])(" + focus.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "i");
+  box.querySelector(".rdot").style.background = REG_COLOR[s.register];
+  box.querySelector(".rlabel").textContent = regLabel(s.register);
+  box.querySelector(".rja").textContent = "· " + regJa(s.register);
+  box.querySelector(".coll").textContent = "— " + s.collection;
+  const sent = box.querySelector(".sent");
+  const tr = box.querySelector(".tr");
+  const swap = () => {
+    sent.innerHTML = esc(s.text).replace(rx, (m, pre, w) => pre + "<b>" + w + "</b>");
+    tr.textContent = s.translation ?? "";
+    box.querySelector(".go").innerHTML =
+      `<a href="${searchHref(focus)}">→ search “${esc(focus)}” in the corpus</a>`;
+  };
+  if (REDUCED) swap();
+  else {
+    sent.style.opacity = tr.style.opacity = 0;
+    setTimeout(() => { swap(); sent.style.opacity = tr.style.opacity = 1; }, 250);
+  }
+  document.querySelectorAll("#speaks .dots i").forEach((d, j) => d.classList.toggle("on", j === spI));
+}
+function spStart() { if (!REDUCED && !spTimer) spTimer = setInterval(() => spGo(spI + 1), 6000); }
+function spStop() { clearInterval(spTimer); spTimer = null; }
+function spHold() { spStop(); spStart(); }
+
+// ── 01 registers ───────────────────────────────────────────────────────────
+const regTip = (r) => {
+  const g = D.registers[r];
+  return `<b>${esc(g.label)}</b> <span class="m">· ${esc(g.ja)}</span><br>` +
+    `${fmt(g.words)} words (${pct(g.words / D.totals.words)}) · ${fmt(g.sentences)} sentences · ` +
+    `${fmt(g.types)} forms<br><span class="m">${esc(g.description)}</span>`;
+};
+function renderStrip() {
+  const total = D.totals.words;
+  const strip = $("#strip");
+  const labels = $(".striplabels");
+  let acc = 0, small = 0, smallAcc0 = null;
+  strip.innerHTML = REG_ORDER.map((r) => {
+    const g = D.registers[r];
+    const share = g.words / total;
+    const seg = `<div class="seg" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}'
+      tabindex="0" role="img" aria-label="${esc(g.label)}: ${pct(share)} of words"
+      style="flex:${g.words} 0 0; background:${REG_COLOR[r]}">` +
+      (share >= 0.07 ? `<span class="il">${esc(g.label)} · ${pct(share)}</span>` : "") + `</div>`;
+    return seg;
+  }).join("");
+  const SHORT = { social: "Social media", pedagogy: "Textbooks", dictionary: "Dictionary",
+    conversation: "Conversation", scripture: "Bible", press: "News" };
+  let li = 0;
+  labels.innerHTML = REG_ORDER.map((r) => {
+    const g = D.registers[r];
+    const share = g.words / total;
+    const mid = acc + share / 2;
+    acc += share;
+    if (share >= 0.07) return "";
+    if (share < 0.015) { if (smallAcc0 === null) smallAcc0 = mid; small += share; return ""; }
+    const row = li++ % 2 === 0 ? "rowa" : "rowb";
+    return `<span class="${row}" style="left:${(100 * mid).toFixed(2)}%">${esc(SHORT[r] ?? g.label)}<i></i></span>`;
+  }).join("") + (small > 0
+    ? `<span class="${li % 2 === 0 ? "rowa" : "rowb"}" style="left:${(100 * (acc - small / 2)).toFixed(2)}%; transform:translateX(-78%)">2 more<i style="margin-right:6px"></i></span>`
+    : "");
+  strip.querySelectorAll(".seg").forEach((el) => {
+    el.addEventListener("click", () => togglePin(el.dataset.reg));
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") togglePin(el.dataset.reg); });
+  });
+}
+function renderRegBars() {
+  const rows = [...REG_ORDER].sort((a, b) => D.registers[b][regMetric] - D.registers[a][regMetric]);
+  const max = D.registers[rows[0]][regMetric];
+  const total = REG_ORDER.reduce((s, r) => s + D.registers[r][regMetric], 0);
+  $("#regbars").innerHTML = rows.map((r) => {
+    const g = D.registers[r];
+    const v = g[regMetric];
+    const w = (100 * v) / max;
+    const inBar = w > 55;
+    const share = regMetric === "types" ? "" : " · " + pct(v / total);
+    const valPos = inBar ? `left:calc(${w.toFixed(2)}% - 8px)` : `left:calc(${w.toFixed(2)}% + 8px)`;
+    return `<div class="brow" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}' tabindex="0">
+      <span class="lab"><span class="rdot" style="background:${REG_COLOR[r]}"></span>
+        <span>${esc(g.label)} <span class="rja">${esc(g.ja)}</span></span></span>
+      <span class="track"><span class="fill" style="width:${w.toFixed(2)}%; background:${REG_COLOR[r]}"></span>
+        <span class="val${inBar ? " in" : ""}" style="${valPos}">${fmt(v)}${share}</span></span></div>`;
+  }).join("");
+  $("#regbars").querySelectorAll(".brow").forEach((el) =>
+    el.addEventListener("click", () => togglePin(el.dataset.reg)));
+  if (pin) document.querySelectorAll("#regbars [data-reg]").forEach((el) =>
+    el.classList.toggle("pinned", el.dataset.reg === pin));
+  $("#regtable").innerHTML = `<table><tr><th>Register</th><th class="num">Sentences</th>
+    <th class="num">Words</th><th class="num">Word forms</th></tr>` +
+    REG_ORDER.map((r) => { const g = D.registers[r]; return `<tr><td>${esc(g.label)} · ${esc(g.ja)}</td>
+      <td class="num">${fmt(g.sentences)}</td><td class="num">${fmt(g.words)}</td>
+      <td class="num">${fmt(g.types)}</td></tr>`; }).join("") + "</table>";
+}
+$("#regmetric").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  regMetric = b.dataset.m;
+  $("#regmetric").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  renderRegBars();
+});
+
+// ── 02 dialects ────────────────────────────────────────────────────────────
+function renderDialects() {
+  const total = D.totals.sentences;
+  const max = Math.max(...D.dialects.flatMap((g) => g.dialects.map((d) => d.n)));
+  const regionRank = { "北海道": 0, "樺太": 1 };
+  const groups = [...D.dialects].sort((a, b) => (regionRank[a.region] ?? 9) - (regionRank[b.region] ?? 9));
+  $("#dialbars").innerHTML = groups.map((g) => {
+    const region = REGION_LABEL[g.region] ?? g.region;
+    return `<div class="dgroup"><h3>${esc(region)} — ${fmt(g.sentences)} sentences (${pct(g.sentences / total)})</h3>
+      <div class="rows">` + g.dialects.map((d) => {
+        const rom = ROMAJI[d.name] ?? "";
+        const name = d.name === "unspecified" ? "（記載なし）" : d.name;
+        const w = (100 * d.n) / max;
+        const inBar = w > 70;
+        const valPos = inBar ? `left:calc(${w.toFixed(2)}% - 8px)` : `left:calc(${w.toFixed(2)}% + 8px)`;
+        return `<div class="brow" tabindex="0" data-tip="<b>${esc(name)}</b> ${esc(rom)}<br>${fmt(d.n)} sentences · ${pct(d.n / total)} of corpus">
+          <span class="lab"><span class="rja" lang="ja">${esc(name)}</span> <span class="rom">${esc(rom)}</span></span>
+          <span class="track"><span class="fill" style="width:${w.toFixed(2)}%"></span>
+          <span class="val${inBar ? " ind" : ""}" style="${valPos}">${fmt(d.n)} · ${pct(d.n / total)}</span></span></div>`;
+      }).join("") + "</div></div>";
+  }).join("");
+}
+
+// ── 03 lexicon ─────────────────────────────────────────────────────────────
+function renderLexicon() {
+  const z = D.zipf;
+  const W = D.totals.words;
+  const cum = []; let s = 0;
+  for (const p of z) { s += p.n; cum.push(s); }
+  const top10 = pct(cum[9] / W), top100 = pct(cum[99] / W);
+  $("#lexlede").innerHTML = `The ten commonest forms — particles and clitics like ` +
+    `<a class="w" href="${searchHref("ne")}">ne</a>, <a class="w" href="${searchHref("a=")}">a=</a>, ` +
+    `<a class="w" href="${searchHref("wa")}">wa</a> — carry ${top10} of everything in the corpus. ` +
+    `More than half of all word forms appear exactly once.`;
+  $("#callouts").innerHTML = [
+    [top10, "of all word tokens are one of the 10 commonest forms"],
+    [top100, "are covered by the top 100 forms"],
+    [fmt(D.totals.hapax), `word forms occur exactly once — ${pct(D.totals.hapax / D.totals.types)} of the vocabulary`],
+  ].map(([v, l]) => `<div class="stat"><div class="v">${v}</div><div class="c">${l}</div></div>`).join("");
+
+  // log–log plot
+  const PW = 1000, PH = 430, L = 60, R = 16, T = 16, B = 40;
+  const xmax = Math.log10(z.length), ymax = Math.log10(z[0].n);
+  const X = (rank) => L + (Math.log10(rank) / xmax) * (PW - L - R);
+  const Y = (n) => T + (1 - Math.log10(Math.max(n, 1)) / ymax) * (PH - T - B);
+  let svg = "";
+  for (let d = 1; d <= Math.floor(ymax); d++)
+    svg += `<line class="grid" x1="${L}" x2="${PW - R}" y1="${Y(10 ** d)}" y2="${Y(10 ** d)}"/>` +
+      `<text x="${L - 8}" y="${Y(10 ** d) + 4}" text-anchor="end">10${"⁰¹²³⁴⁵"[d]}</text>`;
+  for (const r of [1, 10, 100, 1000])
+    svg += `<text x="${X(r)}" y="${PH - B + 18}" text-anchor="middle">${fmt(r)}</text>`;
+  svg += `<text x="${(L + PW - R) / 2}" y="${PH - 6}" text-anchor="middle">rank (log scale)</text>`;
+  svg += `<line class="ideal" x1="${X(1)}" y1="${Y(z[0].n)}" x2="${X(z.length)}" y2="${Y(z[0].n / z.length)}"/>` +
+    `<text x="${X(140)}" y="${Y(z[0].n / 140) - 16}">ideal Zipf slope (frequency ∝ 1/rank)</text>`;
+  svg += `<polyline class="curve" points="${z.map((p, i) => X(i + 1).toFixed(1) + "," + Y(p.n).toFixed(1)).join(" ")}"/>`;
+  const ANN = 8, placed = [];
+  for (let i = 0; i < ANN; i++) {
+    const p = z[i];
+    let lx = X(i + 1) + 12;
+    const ly = Math.max(Y(p.n) - 12, 14);
+    while (placed.some(([px, py]) => Math.abs(px - lx) < 48 && Math.abs(py - ly) < 14)) lx += 52;
+    placed.push([lx, ly]);
+    svg += `<line class="leader" x1="${X(i + 1) + 2}" y1="${Y(p.n) - 3}" x2="${lx - 2}" y2="${ly + 3}"/>` +
+      `<a href="${searchHref(p.w)}"><text class="ann" x="${lx}" y="${ly}">${esc(p.w)}</text></a>`;
+  }
+  svg += `<circle id="zdot" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2" style="display:none"/>` +
+    `<rect id="zhit" x="${L}" y="${T}" width="${PW - L - R}" height="${PH - T - B}" fill="transparent"/>`;
+  $("#zipf").innerHTML = svg;
+  const hit = $("#zhit"), dot = $("#zdot");
+  const onmove = (e) => {
+    const box = $("#zipf").getBoundingClientRect();
+    const px = ((e.clientX - box.left) / box.width) * PW;
+    const rank = Math.max(1, Math.min(z.length, Math.round(10 ** (((px - L) / (PW - L - R)) * xmax))));
+    const p = z[rank - 1];
+    dot.style.display = "";
+    dot.setAttribute("cx", X(rank)); dot.setAttribute("cy", Y(p.n));
+    showTip(`<b>${esc(p.w)}</b> <span class="m">· rank ${fmt(rank)}</span><br>` +
+      `${fmt(p.n)} tokens · ${pct(p.n / W)} of words<br><span class="m">top ${fmt(rank)} cover ${pct(cum[rank - 1] / W)}</span>`,
+      e.clientX, e.clientY);
+  };
+  hit.addEventListener("pointermove", onmove);
+  hit.addEventListener("pointerleave", () => { dot.style.display = "none"; hideTip(); });
+  $("#zipftable").innerHTML = `<table><tr><th class="num">Rank</th><th>Form</th><th class="num">Tokens</th><th class="num">Cumulative</th></tr>` +
+    z.slice(0, 50).map((p, i) => `<tr><td class="num">${i + 1}</td><td><a class="w" href="${searchHref(p.w)}">${esc(p.w)}</a></td>
+      <td class="num">${fmt(p.n)}</td><td class="num">${pct(cum[i] / W)}</td></tr>`).join("") + "</table>";
+}
+
+// ── 04a sentence-length fingerprints ───────────────────────────────────────
+const rebin = (h) => { // 31 one-token bins -> 15 two-token bins + 31+
+  const out = [];
+  for (let i = 0; i < 30; i += 2) out.push(h[i] + h[i + 1]);
+  out.push(h[30]);
+  return out;
+};
+function renderHists() {
+  const corpus = rebin(D.totals.lengthHist);
+  const cTotal = corpus.reduce((a, b) => a + b, 0);
+  const perReg = REG_ORDER.map((r) => {
+    const bins = rebin(D.registers[r].lengthHist);
+    const t = bins.reduce((a, b) => a + b, 0);
+    return { r, bins, t };
+  });
+  const ymax = Math.max(...perReg.flatMap(({ bins, t }) => bins.map((b) => b / t)));
+  const W2 = 260, H2 = 110, BOT = 16;
+  const bw = W2 / 16;
+  $("#histgrid").innerHTML = perReg.map(({ r, bins, t }) => {
+    const g = D.registers[r];
+    let svg = "";
+    corpus.forEach((c, i) => {
+      const h = ((c / cTotal) / ymax) * (H2 - BOT);
+      svg += `<rect x="${(i * bw + 1).toFixed(1)}" y="${(H2 - BOT - h).toFixed(1)}" width="${bw - 2}" height="${h.toFixed(1)}" fill="var(--muted)" opacity=".22"/>`;
+    });
+    bins.forEach((b, i) => {
+      const h = ((b / t) / ymax) * (H2 - BOT);
+      const lo = i * 2 + 1, hi = i < 15 ? i * 2 + 2 : "";
+      const label = i < 15 ? `${lo}–${hi}` : "31+";
+      svg += `<rect x="${(i * bw + 1).toFixed(1)}" y="${(H2 - BOT - h).toFixed(1)}" width="${bw - 2}" height="${h.toFixed(1)}" rx="1.5"
+        fill="${REG_COLOR[r]}" data-tip="<b>${label} tokens</b><br>${pct(b / t)} of ${esc(g.label).toLowerCase()} sentences<br><span class=m>corpus: ${pct(corpus[i] / cTotal)}</span>"/>`;
+    });
+    const mx = Math.min(g.meanLength, 31) / 31 * W2;
+    const flip = mx > W2 * 0.7;
+    svg += `<line x1="${mx}" x2="${mx}" y1="${H2 - BOT}" y2="${H2 - BOT + 5}" stroke="var(--ink)" stroke-width="1.5"/>` +
+      `<text x="${flip ? mx - 4 : mx + 4}" y="${H2 - 2}"${flip ? ' text-anchor="end"' : ""}>mean ${g.meanLength}</text>` +
+      `<text x="0" y="${H2 - 2}">1</text><text x="${W2 - 2}" y="${H2 - 2}" text-anchor="end">31+</text>`;
+    return `<div class="histpanel" data-reg="${r}" tabindex="0" role="img"
+      aria-label="${esc(g.label)}: sentence-length distribution, mean ${g.meanLength} tokens">
+      <div class="hd"><span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(g.label)}</div>
+      <div class="n">${fmt(g.sentences)} sentences · median ${g.medianLength}</div>
+      <svg viewBox="0 0 ${W2} ${H2}">${svg}</svg></div>`;
+  }).join("");
+  $("#histgrid").querySelectorAll(".histpanel").forEach((el) =>
+    el.addEventListener("click", () => togglePin(el.dataset.reg)));
+}
+
+// ── register chips (shared by 04b + 05) ────────────────────────────────────
+function renderChips() {
+  const html = REG_ORDER.map((r) =>
+    `<button type="button" data-r="${r}" aria-pressed="${r === keyReg}">
+      <span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(regLabel(r))}</button>`).join("");
+  for (const id of ["chips-phrases", "chips-key"]) {
+    const el = document.getElementById(id);
+    el.innerHTML = html;
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      keyReg = b.dataset.r;
+      setPin(keyReg);
+      renderPhrases(); renderKeyness(); syncChips();
+    });
+  }
+}
+function syncChips() {
+  document.querySelectorAll(".regchips button").forEach((b) =>
+    b.setAttribute("aria-pressed", b.dataset.r === keyReg));
+}
+
+// ── 04b signature phrases ──────────────────────────────────────────────────
+function renderPhrases() {
+  const g = D.registers[keyReg];
+  const list = (items, empty) => items.length
+    ? items.slice(0, 10).map((p) => `<div class="phrase"><a class="w" href="${searchHref(p.g)}">${esc(p.g)}</a>
+        <span class="dots2"></span><span class="n">${fmt(p.n)}</span></div>`).join("")
+    : `<div class="phrase" style="color:var(--muted)">${empty}</div>`;
+  $("#phrases").innerHTML =
+    `<div><h3>Bigrams</h3>${list(g.bigrams, "No bigram data for this register.")}</div>` +
+    `<div><h3>Trigrams</h3>${list(g.trigrams, "No trigram data for this register.")}</div>`;
+}
+
+// ── 05 keyness dumbbells ───────────────────────────────────────────────────
+function renderKeyness() {
+  const g = D.registers[keyReg];
+  let rows = g.keywords ?? [];
+  if (keyCls === "content") rows = rows.filter((k) => !k.f);
+  if (keyCls === "function") rows = rows.filter((k) => k.f);
+  rows = rows.slice(0, 15);
+  $("#keynote").textContent = keyCls === "function"
+    ? "Particles, auxiliaries and clitics — the grammatical skeleton a register leans on."
+    : keyCls === "content"
+      ? "Function words are listed under their own toggle."
+      : "";
+  if (!rows.length) {
+    $("#keyviz").innerHTML = `<p class="footnote">No qualifying words for this view.</p>`;
+    $("#keylegend").innerHTML = ""; $("#keytable").innerHTML = "";
+    return;
+  }
+  const pmMax = Math.max(...rows.map((k) => k.pm));
+  const pmMin = Math.max(1, Math.min(...rows.flatMap((k) => [k.pm, Math.max(k.pmRest, 1)])));
+  const L2 = 150, R2 = 96, W3 = 680, RH = 30, T2 = 24;
+  const H3 = T2 + rows.length * RH + 8;
+  const X2 = (pm) => L2 + ((Math.log10(Math.max(pm, 1)) - Math.log10(pmMin)) /
+    (Math.log10(pmMax) - Math.log10(pmMin) || 1)) * (W3 - L2 - R2);
+  let svg = "";
+  for (const tk of [10, 100, 1000, 10000, 100000]) {
+    if (tk < pmMin || tk > pmMax) continue;
+    svg += `<line class="grid" x1="${X2(tk)}" x2="${X2(tk)}" y1="${T2 - 6}" y2="${H3 - 8}"/>` +
+      `<text x="${X2(tk)}" y="${T2 - 10}" text-anchor="middle">${tk >= 1000 ? tk / 1000 + "k" : tk}</text>`;
+  }
+  svg += `<text x="${L2 - 10}" y="${T2 - 10}" text-anchor="end">per million →</text>`;
+  rows.forEach((k, i) => {
+    const y = T2 + i * RH + RH / 2;
+    const xr = X2(Math.max(k.pmRest, 1)), xk = X2(k.pm);
+    const fold = k.pmRest > 0 ? "×" + (k.pm / k.pmRest < 20 ? (k.pm / k.pmRest).toFixed(1) : Math.round(k.pm / k.pmRest)) : "only here";
+    svg += `<g tabindex="0" role="img" aria-label="${esc(k.w)}: ${fmt(k.pm)} per million here, ${fmt(k.pmRest)} in the rest"
+        data-tip="<b>${esc(k.w)}</b><br>${fmt(k.pm)} per million in ${esc(regLabel(keyReg)).toLowerCase()}<br><span class=m>${fmt(k.pmRest)} per million elsewhere · G² ${fmt(Math.round(k.g2))}</span>">
+      <rect x="0" y="${y - RH / 2}" width="${W3}" height="${RH}" fill="transparent"/>
+      <a href="${searchHref(k.w)}"><text class="w" x="${L2 - 10}" y="${y + 4}" text-anchor="end">${esc(k.w)}</text></a>
+      <line x1="${xr}" x2="${xk}" y1="${y}" y2="${y}" stroke="${REG_COLOR[keyReg]}" stroke-width="2" opacity=".45"/>
+      <circle cx="${xr}" cy="${y}" r="4" fill="var(--muted)" stroke="var(--panel)" stroke-width="2"/>
+      <circle cx="${xk}" cy="${y}" r="5.5" fill="${REG_COLOR[keyReg]}" stroke="var(--panel)" stroke-width="2"/>
+      <text class="fx" x="${W3 - R2 + 8}" y="${y + 4}" fill="var(--muted)">${fold}</text></g>`;
+  });
+  $("#keyviz").innerHTML = `<svg viewBox="0 0 ${W3} ${H3}" role="img"
+    aria-label="Words most characteristic of ${esc(regLabel(keyReg))}">${svg}</svg>`;
+  $("#keylegend").innerHTML =
+    `<span class="k"><span class="dotk" style="background:${REG_COLOR[keyReg]}"></span>${esc(regLabel(keyReg))}</span>` +
+    `<span class="k"><span class="dotk" style="background:var(--muted)"></span>rest of the corpus</span>` +
+    `<span class="k">log scale, per million tokens</span>`;
+  $("#keytable").innerHTML = `<table><tr><th>Form</th><th class="num">In register</th>
+    <th class="num">Per million</th><th class="num">Rest, per million</th><th class="num">G²</th></tr>` +
+    rows.map((k) => `<tr><td><a class="w" href="${searchHref(k.w)}">${esc(k.w)}</a>${k.f ? ' <span class="m">(function)</span>' : ""}</td>
+      <td class="num">${fmt(k.n)}</td><td class="num">${fmt(k.pm)}</td>
+      <td class="num">${fmt(k.pmRest)}</td><td class="num">${fmt(Math.round(k.g2))}</td></tr>`).join("") + "</table>";
+}
+$("#keycls").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  keyCls = b.dataset.c;
+  $("#keycls").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  renderKeyness();
+});
+
+// ── 06 POS heatmap ─────────────────────────────────────────────────────────
+let hmSort = null;
+function renderHeatmap() {
+  const tags = Object.keys(D.totals.pos).slice(0, 10);
+  const share = (r, t) => {
+    const p = D.registers[r].pos;
+    const tagged = Object.values(p).reduce((a, b) => a + b, 0);
+    if (!tagged) return 0;
+    if (t === "OTHER") return Object.entries(p).filter(([k]) => !tags.includes(k))
+      .reduce((a, [, v]) => a + v, 0) / tagged;
+    return (p[t] ?? 0) / tagged;
+  };
+  const corpusShare = (t) => {
+    const p = D.totals.pos;
+    const tagged = Object.values(p).reduce((a, b) => a + b, 0);
+    if (t === "OTHER") return Object.entries(p).filter(([k]) => !tags.includes(k))
+      .reduce((a, [, v]) => a + v, 0) / tagged;
+    return (p[t] ?? 0) / tagged;
+  };
+  const cols = [...tags, "OTHER"];
+  const allShares = REG_ORDER.flatMap((r) => cols.map((t) => share(r, t)));
+  const smax = Math.max(...allShares);
+  const step = (v) => Math.min(4, Math.floor((v / smax) * 5));
+  const MIX = [10, 28, 48, 68, 86];
+  const rows = [...REG_ORDER];
+  if (hmSort) rows.sort((a, b) => share(b, hmSort) - share(a, hmSort));
+  $("#hm").innerHTML = `<table class="hm"><tr class="hd"><th>register</th>` +
+    cols.map((t) => `<th data-t="${t}" aria-sort="${hmSort === t ? "descending" : "none"}">${t}${hmSort === t ? " ↓" : ""}</th>`).join("") +
+    `</tr>` + rows.map((r) => `<tr data-reg="${r}"><td><span class="rl" data-r="${r}">
+      <span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(regLabel(r))}</span></td>` +
+      cols.map((t) => {
+        const v = share(r, t);
+        const s = step(v);
+        return `<td class="s${s}"><span class="cell" tabindex="0" role="img"
+          aria-label="${esc(regLabel(r))}, ${t}: ${(100 * v).toFixed(1)} percent"
+          data-tip="<b>${t}</b> in ${esc(regLabel(r)).toLowerCase()}<br>${(100 * v).toFixed(1)}% of tagged tokens <span class=m>(corpus ${(100 * corpusShare(t)).toFixed(1)}%)</span>"
+          style="background:color-mix(in oklab, var(--accent) ${MIX[s]}%, var(--panel))">${(100 * v).toFixed(1)}</span></td>`;
+      }).join("") + "</tr>").join("") + "</table>";
+  $("#hm").querySelectorAll("th[data-t]").forEach((th) =>
+    th.addEventListener("click", () => { hmSort = hmSort === th.dataset.t ? null : th.dataset.t; renderHeatmap(); }));
+  $("#hm").querySelectorAll(".rl").forEach((el) =>
+    el.addEventListener("click", () => togglePin(el.dataset.r)));
+  if (pin) document.querySelectorAll("#hm tr[data-reg]").forEach((el) =>
+    el.classList.toggle("pinned", el.dataset.reg === pin));
+  $("#hmlegend").innerHTML = `share of tagged tokens: low ` +
+    MIX.map((m) => `<span class="sw" style="background:color-mix(in oklab, var(--accent) ${m}%, var(--panel))"></span>`).join("") +
+    ` high (max ${(100 * smax).toFixed(0)}%)`;
+  const t = D.totals;
+  $("#poslede").textContent = `${pct(t.tagged / t.tokens)} of tokens carry a part-of-speech tag, ` +
+    `and the mix shifts by register: narrative runs on verbs and particles, news and scripture ` +
+    `lean on nouns.`;
+}
+
+// ── 07 collections ─────────────────────────────────────────────────────────
+let collSort = { k: "tokens", dir: -1 };
+function renderCollections() {
+  const cols = [["name", "Collection"], ["register", "Register"], ["dialect", "Dialect"],
+    ["sentences", "Sentences"], ["tokens", "Words"], ["types", "Forms"], ["mean", "Mean len"]];
+  const items = D.collections.map((c) => ({ ...c, mean: c.sentences ? c.tokens / c.sentences : 0 }));
+  items.sort((a, b) => {
+    const { k, dir } = collSort;
+    const av = a[k] ?? "", bv = b[k] ?? "";
+    return (typeof av === "number" ? av - bv : String(av).localeCompare(String(bv), "ja")) * dir;
+  });
+  $("#colltable").innerHTML = `<thead><tr>` + cols.map(([k, l]) =>
+    `<th data-k="${k}" class="${typeof items[0][k] === "number" ? "num" : ""}"
+      aria-sort="${collSort.k === k ? (collSort.dir < 0 ? "descending" : "ascending") : "none"}">${l}${collSort.k === k ? (collSort.dir < 0 ? " ↓" : " ↑") : ""}</th>`).join("") +
+    `</tr></thead><tbody>` + items.map((c) => {
+      const rom = c.dialect ? (ROMAJI[c.dialect] ?? "") : "";
+      return `<tr data-reg="${esc(c.register)}" style="--pincolor:${REG_COLOR[c.register]}">
+      <td lang="ja">${esc(c.name)}</td>
+      <td><span class="regcell" data-r="${esc(c.register)}"><span class="rdot" style="background:${REG_COLOR[c.register]}"></span>${esc(regLabel(c.register))}</span></td>
+      <td>${c.dialect ? `<span lang="ja">${esc(c.dialect)}</span> <span style="color:var(--muted)">${esc(rom)}</span>` : "—"}</td>
+      <td class="num">${fmt(c.sentences)}</td><td class="num">${fmt(c.tokens)}</td>
+      <td class="num">${fmt(c.types)}</td><td class="num">${c.mean.toFixed(1)}</td></tr>`;
+    }).join("") + "</tbody>";
+  $("#colltable thead").addEventListener("click", (e) => {
+    const th = e.target.closest("th[data-k]"); if (!th) return;
+    const k = th.dataset.k;
+    collSort = collSort.k === k ? { k, dir: -collSort.dir } : { k, dir: k === "name" || k === "register" || k === "dialect" ? 1 : -1 };
+    renderCollections();
+  });
+  $("#colltable").querySelectorAll(".regcell").forEach((el) =>
+    el.addEventListener("click", () => togglePin(el.dataset.r)));
+  if (pin) document.querySelectorAll("#colltable tbody tr").forEach((el) =>
+    el.classList.toggle("pinned", el.dataset.reg === pin));
+}
+
+// ── methods / observers ────────────────────────────────────────────────────
+function renderMethods() {
+  $("#m-tagged").textContent = pct(D.totals.tagged / D.totals.tokens);
+  $("#m-snapshot").textContent = D.generated;
+}
+function revealObserver() {
+  if (REDUCED) { document.querySelectorAll(".reveal").forEach((s) => s.classList.add("in")); return; }
+  const io = new IntersectionObserver((es) => es.forEach((en) => {
+    if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+  }), { rootMargin: "0px 0px -8% 0px" });
+  document.querySelectorAll(".reveal").forEach((s) => io.observe(s));
+}
+function navObserver() {
+  const links = [...document.querySelectorAll("#subnav a")];
+  const io = new IntersectionObserver((es) => {
+    for (const en of es) if (en.isIntersecting) {
+      links.forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#" + en.target.id));
+    }
+  }, { rootMargin: "-25% 0px -65% 0px" });
+  document.querySelectorAll("main section[id]").forEach((s) => io.observe(s));
+}
+
+boot();
+</script>
+</body>
+</html>
