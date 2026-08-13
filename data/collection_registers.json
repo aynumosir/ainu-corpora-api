@@ -1,0 +1,96 @@
+{
+  "registers": {
+    "oral": {
+      "label": "Oral literature",
+      "ja": "口承文芸",
+      "description": "Transcribed oral narratives: uwepeker, kamuy yukar, upaskuma and related traditional genres."
+    },
+    "conversation": {
+      "label": "Conversation & speech",
+      "ja": "会話・演説",
+      "description": "Dialogues, interviews and public speaking."
+    },
+    "dictionary": {
+      "label": "Dictionary examples",
+      "ja": "辞書例文",
+      "description": "Example sentences from dialect dictionaries."
+    },
+    "pedagogy": {
+      "label": "Textbooks & courses",
+      "ja": "教科書・講座",
+      "description": "Language courses and teaching materials."
+    },
+    "press": {
+      "label": "News",
+      "ja": "新聞",
+      "description": "Newspaper articles from the Ainu Times."
+    },
+    "social": {
+      "label": "Social media",
+      "ja": "SNS",
+      "description": "Public posts written in Ainu on X (Twitter)."
+    },
+    "scripture": {
+      "label": "Bible translation",
+      "ja": "聖書翻訳",
+      "description": "The New Testament translated into Ainu."
+    },
+    "other": {
+      "label": "Other",
+      "ja": "その他",
+      "description": "Letters, exhibit texts, song lyrics and other small sources."
+    }
+  },
+  "collections": {
+    "アイヌ語アーカイブ": "oral",
+    "平取町アイヌ口承文芸": "oral",
+    "アイヌ語口承文芸コーパス": "oral",
+    "AA研アイヌ語資料": "oral",
+    "北海道立アイヌ民族文化研究センター紀要": "oral",
+    "葛野辰次郎の伝承": "oral",
+    "川上まつ子の伝承": "oral",
+    "浅井タケ昔話全集 I, II": "oral",
+    "アイヌ神謡集": "oral",
+    "知里幸恵のウウェペケレ（昔話）": "oral",
+    "アイヌ民譚集": "oral",
+    "鍋沢元蔵筆録ノート": "oral",
+    "アイヌ口承文芸テキスト集": "oral",
+    "カムイユカㇻを聞いてアイヌ語を学ぶ": "oral",
+    "アイヌ語音声資料": "oral",
+    "elpr-a2": "oral",
+    "千葉大学大学院人文公共学府研究プロジェクト報告書": "oral",
+    "千葉大学ユーラシア言語文化論集": "oral",
+    "北方言語研究": "oral",
+    "北方人文研究": "oral",
+    "北海道民族学": "oral",
+    "アイヌの知恵・ウパㇱクマ1": "oral",
+    "アイヌの知恵・ウパㇱクマ2": "oral",
+    "長濱清蔵のアイヌ語": "oral",
+    "アイヌ語・アイヌ文化研究の課題": "oral",
+    "トピック別 アイヌ語会話辞典": "conversation",
+    "ウポポイ職員インタビュー": "conversation",
+    "アイヌ語弁論大会": "conversation",
+    "白沢ナベと小田イトの会話": "conversation",
+    "萱野茂の国会演説": "conversation",
+    "プラハ宣言": "conversation",
+    "アイヌ語鵡川方言日本語‐アイヌ語辞典": "dictionary",
+    "アイヌ語會話字典": "dictionary",
+    "ウポポイのアイヌ語表示辞典": "dictionary",
+    "アイヌ語ラジオ講座テキスト": "pedagogy",
+    "アイヌ語教材テキスト": "pedagogy",
+    "ニューエクスプレスプラス アイヌ語": "pedagogy",
+    "CDエクスプレス アイヌ語": "pedagogy",
+    "アコㇿイタㇰ": "pedagogy",
+    "エンチウ（樺太アイヌ語）会話入門": "pedagogy",
+    "ニューエクスプレス・スペシャル 日本語の隣人たち I+II": "pedagogy",
+    "アイヌタイムズ": "press",
+    "アイヌ語ソーシャルメディアコーパス（X/Twitter）": "social",
+    "アイヌ語訳新約聖書": "scripture",
+    "千徳太郎治のピウスツキ宛書簡": "other",
+    "ウポポイ館内展示": "other",
+    "アイヌ語復興に関わる諸問題": "other",
+    "北海道大学所在地の先住民族に対する敬意の表明": "other",
+    "ピウスツキ記念碑": "other",
+    "アイヌの美―彩りと輝き― 挨拶文": "other"
+  }
+}
