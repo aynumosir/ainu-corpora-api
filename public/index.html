@@ -6,6 +6,7 @@
 <title>aynu kampisos hunara — Ainu corpus search</title>
 <style>
   :root {
+    color-scheme: light;
     --bg: #fbfaf7; --panel: #ffffff; --ink: #1c1a17; --muted: #6b645a;
     --line: #e7e2d8; --accent: #b4532a; --accent-soft: #f3e2d8;
     --node-bg: #fde9b8; --node-ink: #5a3a00; --link: #9c4a23;
@@ -13,21 +14,34 @@
     --mono: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
     --ui: system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
   }
+  /* dark follows the OS by default; the ◐ toggle's data-theme wins both ways */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --bg: #16140f; --panel: #1f1c16; --ink: #ece7dd; --muted: #9a9285;
       --line: #322d24; --accent: #e08a5b; --accent-soft: #2c211a;
       --node-bg: #4a3a18; --node-ink: #ffe6a8; --link: #e6a072;
       --chip: #2a261e; --pos: #8fd0c8; --pos-bg: #1d2a28; --bar: #6b4f30;
     }
   }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #16140f; --panel: #1f1c16; --ink: #ece7dd; --muted: #9a9285;
+    --line: #322d24; --accent: #e08a5b; --accent-soft: #2c211a;
+    --node-bg: #4a3a18; --node-ink: #ffe6a8; --link: #e6a072;
+    --chip: #2a261e; --pos: #8fd0c8; --pos-bg: #1d2a28; --bar: #6b4f30;
+  }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); line-height: 1.5; }
   header { padding: 16px 22px 12px; border-bottom: 1px solid var(--line); }
   header .wrap { display: flex; align-items: baseline; }
-  header nav { margin-left: auto; font-size: 13px; }
+  header nav { margin-left: auto; font-size: 13px; display: flex; align-items: center; gap: 12px; }
   header nav a { color: var(--link); text-decoration: none; }
   header nav a:hover { text-decoration: underline; }
+  button.theme { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--ink); cursor: pointer; padding: 0; font-size: 15px;
+    width: 30px; height: 30px; display: inline-grid; place-items: center; }
+  button.theme:hover { border-color: var(--accent); }
   h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; }
   h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
   .wrap { max-width: 1240px; margin: 0 auto; padding: 0 22px; }
@@ -151,8 +165,17 @@
 <body>
 <header><div class="wrap">
   <h1>aynu kampisos hunara <small>Ainu corpus search</small></h1>
-  <nav><a href="/stats">statistics</a></nav>
+  <nav><a href="/stats">statistics</a><button class="theme" type="button" id="themetoggle"
+    title="Toggle light/dark" aria-label="Toggle light/dark">◐</button></nav>
 </div></header>
+<script>
+document.getElementById("themetoggle").addEventListener("click", () => {
+  const el = document.documentElement;
+  const dark = el.dataset.theme === "dark"
+    || (!el.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+  el.dataset.theme = dark ? "light" : "dark";
+});
+</script>
 
 <div class="wrap">
   <form id="f" autocomplete="off">
