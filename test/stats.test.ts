@@ -90,6 +90,46 @@ describe("stats.json", () => {
   });
 });
 
+describe("slice datasets", () => {
+  const slices = Object.fromEntries(
+    ["hokkaido", "sakhalin", "traditional", "modern"].map((id) => [
+      id,
+      JSON.parse(readFileSync(new URL(`../public/stats-${id}.json`, import.meta.url), "utf8")),
+    ]),
+  );
+
+  test("every slice is internally consistent", () => {
+    for (const [id, s] of Object.entries(slices) as [string, any][]) {
+      expect(s.slice.id, id).toBe(id);
+      const regs = Object.values(s.registers) as { sentences: number; words: number }[];
+      expect(regs.reduce((a, r) => a + r.sentences, 0), id).toBe(s.totals.sentences);
+      expect(regs.reduce((a, r) => a + r.words, 0), id).toBe(s.totals.words);
+      expect(s.totals.sentences, id).toBeLessThanOrEqual(stats.totals.sentences);
+      for (const k of s.sliceKeywords) expect(k.g2, `${id}:${k.w}`).toBeGreaterThanOrEqual(10.83);
+    }
+  });
+
+  test("region slices and era slices stay within the corpus", () => {
+    expect(slices.hokkaido.totals.sentences + slices.sakhalin.totals.sentences)
+      .toBeLessThanOrEqual(stats.totals.sentences);
+    expect(slices.traditional.totals.sentences + slices.modern.totals.sentences)
+      .toBeLessThanOrEqual(stats.totals.sentences);
+  });
+
+  test("the main dataset's slice index matches the slice files", () => {
+    expect(stats.slices.map((s: any) => s.id).sort()).toEqual(Object.keys(slices).sort());
+    for (const meta of stats.slices) {
+      expect(meta.sentences, meta.id).toBe(slices[meta.id].totals.sentences);
+    }
+  });
+
+  test("every era-tagged collection has a register mapping", () => {
+    for (const name of Object.keys(registers.collectionEras)) {
+      expect(registers.collections[name], name).toBeDefined();
+    }
+  });
+});
+
 describe("stats.html", () => {
   test("baked hero numbers match the dataset", () => {
     const baked = [...page.matchAll(/data-n="(\d+)"/g)].map((m) => +m[1]);
