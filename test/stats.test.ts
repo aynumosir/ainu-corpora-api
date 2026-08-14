@@ -142,6 +142,16 @@ describe("stats.html", () => {
     expect(page).toContain(`${stats.totals.hapax.toLocaleString("en-US")} of them occur exactly once`);
   });
 
+  test("both pages persist the theme and apply it before first paint", () => {
+    for (const file of ["../public/stats.html", "../public/index.html"]) {
+      const html = readFileSync(new URL(file, import.meta.url), "utf8");
+      const boot = html.indexOf('localStorage.getItem("theme")');
+      expect(boot, file).toBeGreaterThan(-1);
+      expect(boot, file).toBeLessThan(html.indexOf("<style>"));
+      expect(html, file).toContain('localStorage.setItem("theme"');
+    }
+  });
+
   test("the toggle's dark block matches the media-query dark block", () => {
     for (const file of ["../public/stats.html", "../public/index.html"]) {
       const html = readFileSync(new URL(file, import.meta.url), "utf8");

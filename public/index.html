@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>aynu kampisos hunara — Ainu corpus search</title>
+<script>
+try {
+  const saved = localStorage.getItem("theme");
+  if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+} catch (e) {}
+</script>
 <style>
   :root {
     color-scheme: light;
@@ -174,6 +180,7 @@ document.getElementById("themetoggle").addEventListener("click", () => {
   const dark = el.dataset.theme === "dark"
     || (!el.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
   el.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("theme", el.dataset.theme); } catch (e) {}
 });
 </script>
 
