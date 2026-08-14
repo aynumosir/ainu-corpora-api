@@ -159,7 +159,9 @@ report over the token layer: corpus totals, a sample-sentence carousel,
 register composition, dialect distribution, a Zipf rank–frequency plot,
 per-register sentence-length fingerprints, top n-grams, G² keyness lists,
 a POS heatmap, and the full collections table. Charts are inline SVG/CSS with
-a shared tooltip; the register palette is CVD-checked in both color schemes.
+a shared tooltip. The register palette was validated for color-vision-deficiency
+separation and surface contrast (Machado–Oliveira–Fernandes simulation, OKLab
+distances) in both color schemes.
 
 The page reads one precomputed asset, `public/stats.json`:
 

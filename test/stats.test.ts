@@ -6,6 +6,7 @@ const registers = JSON.parse(
   readFileSync(new URL("../data/collection_registers.json", import.meta.url), "utf8"),
 );
 const slugs = JSON.parse(readFileSync(new URL("../data/collection_slugs.json", import.meta.url), "utf8"));
+const page = readFileSync(new URL("../public/stats.html", import.meta.url), "utf8");
 
 const REG_IDS = Object.keys(registers.registers);
 
@@ -65,11 +66,47 @@ describe("stats.json", () => {
     }
   });
 
+  test("length histograms sum to the sentences they cover", () => {
+    const sum = (h: number[]) => h.reduce((a, b) => a + b, 0);
+    expect(sum(stats.totals.lengthHist)).toBe(stats.totals.sentencesWithWords);
+    expect(stats.totals.sentencesWithWords).toBeLessThanOrEqual(stats.totals.sentences);
+    for (const [id, r] of Object.entries(stats.registers) as [string, any][]) {
+      expect(sum(r.lengthHist), id).toBe(r.sentencesWithWords);
+    }
+  });
+
+  test("keyness lists respect the significance floor", () => {
+    for (const [id, r] of Object.entries(stats.registers) as [string, any][]) {
+      for (const k of r.keywords) expect(k.g2, `${id}:${k.w}`).toBeGreaterThanOrEqual(10.83);
+    }
+  });
+
   test("samples quote real focus words from their own text", () => {
     expect(stats.samples.length).toBeGreaterThan(0);
     for (const s of stats.samples) {
       expect(REG_IDS).toContain(s.register);
       expect(s.text.toLowerCase()).toContain(s.focus.toLowerCase());
     }
+  });
+});
+
+describe("stats.html", () => {
+  test("baked hero numbers match the dataset", () => {
+    const baked = [...page.matchAll(/data-n="(\d+)"/g)].map((m) => +m[1]);
+    expect(baked).toEqual([
+      stats.totals.tokens,
+      stats.totals.sentences,
+      stats.totals.types,
+      stats.totals.collections,
+    ]);
+    expect(page).toContain(`${stats.totals.hapax.toLocaleString("en-US")} of them occur exactly once`);
+  });
+
+  test("REG_ORDER covers every register in the dataset", () => {
+    const m = page.match(/const REG_ORDER = \[([^\]]+)\]/);
+    expect(m).toBeTruthy();
+    const order = [...m![1].matchAll(/"(\w+)"/g)].map((x) => x[1]);
+    for (const id of Object.keys(stats.registers)) expect(order, id).toContain(id);
+    for (const id of order) expect(page).toContain(`--reg-${id}:`);
   });
 });

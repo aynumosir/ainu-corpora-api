@@ -42,6 +42,7 @@ const FUNCTION_UPOS = new Set(["ADP", "AUX", "CCONJ", "DET", "PART", "PRON", "SC
 const TOP_WORDS = 60;
 const TOP_NGRAMS = 30;
 const TOP_KEYWORDS = 20;
+const G2_FLOOR = 10.83; // chi-square 1 df at p < 0.001: below this a "keyword" is noise
 const ZIPF_RANKS = 1000;
 const LEN_BINS = 30; // sentence-length histogram: 1..30 tokens, then 31+
 
@@ -53,8 +54,13 @@ const sentenceColl = new Map();
 const regSentences = new Array(ALL + 1).fill(0);
 const dialectByRegion = new Map(); // region -> Map(dialect -> n)
 const collectionStats = new Map(); // collection -> {register, sentences, words, types:Set, lenSum, lenN}
-for (const row of db.query("SELECT id, collection, dialect, region FROM sentences").all()) {
-  const regId = collectionRegister[row.collection ?? ""] ?? "other";
+const unmapped = new Map(); // collection names that fell through to "other" without a mapping
+for (const row of db.query("SELECT id, collection, dialect, region, document FROM sentences").all()) {
+  // Single-document sources can arrive with an empty collection and the
+  // collection title in `document`; fall back so they keep their register.
+  const cname = row.collection || row.document || "（無題）";
+  const regId = collectionRegister[cname] ?? "other";
+  if (!(cname in collectionRegister)) unmapped.set(cname, (unmapped.get(cname) ?? 0) + 1);
   const ri = regIndex.get(regId);
   sentenceReg.set(row.id, ri);
   regSentences[ri]++;
@@ -64,12 +70,17 @@ for (const row of db.query("SELECT id, collection, dialect, region FROM sentence
   const dmap = dialectByRegion.get(region);
   const dialect = row.dialect || "unspecified";
   dmap.set(dialect, (dmap.get(dialect) ?? 0) + 1);
-  const cname = row.collection || "（無題）";
   sentenceColl.set(row.id, cname);
   if (!collectionStats.has(cname)) {
     collectionStats.set(cname, { register: regId, sentences: 0, words: 0, types: new Set(), lenSum: 0, lenN: 0 });
   }
   collectionStats.get(cname).sentences++;
+}
+for (const [name, n] of unmapped) {
+  console.warn(`unmapped collection → "other": ${name} (${n} sentences)`);
+}
+for (const name of Object.keys(collectionRegister)) {
+  if (!collectionStats.has(name)) console.warn(`mapped collection absent from the corpus: ${name}`);
 }
 
 // ---- token stream: words, n-grams, POS, sentence lengths ------------------
@@ -92,10 +103,10 @@ const bump = (map, key) => {
 
 let cursorSid = "";
 let cursorIdx = -1;
-let prev = null; // {sid, idx, norm}
+let prev = null; // {sid, idx, fold}
 let prev2 = null;
 const page = db.query(`
-  SELECT sentence_id sid, idx, surface_norm norm, surface_fold fold, script, is_clitic clitic, upos
+  SELECT sentence_id sid, idx, surface, surface_fold fold, script, is_clitic clitic, upos
   FROM corpus_tokens
   WHERE (sentence_id, idx) > (?, ?)
   ORDER BY sentence_id, idx
@@ -128,21 +139,21 @@ for (;;) {
     if (!w) words.set(t.fold, (w = { regs: new Uint32Array(ALL + 1), surf: new Map(), upos: new Map(), clitic: 0 }));
     w.regs[ri]++;
     w.regs[ALL]++;
-    w.surf.set(t.norm, (w.surf.get(t.norm) ?? 0) + 1);
+    w.surf.set(t.surface, (w.surf.get(t.surface) ?? 0) + 1);
     if (t.upos) w.upos.set(t.upos, (w.upos.get(t.upos) ?? 0) + 1);
     if (t.clitic) w.clitic++;
     if (prev && prev.sid === t.sid && prev.idx === t.idx - 1) {
-      const bg = bump(bigrams, `${prev.norm} ${t.norm}`);
+      const bg = bump(bigrams, `${prev.fold} ${t.fold}`);
       bg[ri]++;
       bg[ALL]++;
       if (prev2 && prev2.sid === t.sid && prev2.idx === t.idx - 2) {
-        const tg = bump(trigrams, `${prev2.norm} ${prev.norm} ${t.norm}`);
+        const tg = bump(trigrams, `${prev2.fold} ${prev.fold} ${t.fold}`);
         tg[ri]++;
         tg[ALL]++;
       }
     }
     prev2 = prev;
-    prev = { sid: t.sid, idx: t.idx, norm: t.norm };
+    prev = { sid: t.sid, idx: t.idx, fold: t.fold };
   }
   const last = rows[rows.length - 1];
   cursorSid = last.sid;
@@ -151,13 +162,13 @@ for (;;) {
 
 // per-collection token/type counts need collection per token: one more cheap pass
 const collPage = db.query(`
-  SELECT t.surface_fold fold, s.collection coll, COUNT(*) n
+  SELECT t.surface_fold fold, COALESCE(NULLIF(s.collection, ''), NULLIF(s.document, ''), '（無題）') coll, COUNT(*) n
   FROM corpus_tokens t JOIN sentences s ON s.id = t.sentence_id
   WHERE t.script = 'latn'
-  GROUP BY s.collection, t.surface_fold
+  GROUP BY coll, t.surface_fold
 `);
 for (const row of collPage.all()) {
-  const c = collectionStats.get(row.coll || "（無題）");
+  const c = collectionStats.get(row.coll);
   if (!c) continue;
   c.words += row.n;
   c.types.add(row.fold);
@@ -234,13 +245,21 @@ for (let ri = 0; ri <= ALL; ri++) {
     const a = e.w.regs[ri];
     const total = e.w.regs[ALL];
     if (total < 20 || a < 5) continue;
-    // bare letters (speaker labels, list markers) and punctuation-bearing tokens
-    if (/^[a-z]$|[.,!?。、「」()（）]/.test(display(e.w))) continue;
+    // bare letters (speaker labels, list markers), punctuation-bearing tokens,
+    // and underscore transcription notation
+    if (/^[a-zA-Z]$|[.,!?。、「」()（）_]/.test(display(e.w))) continue;
     const b = total - a;
     if (a / N1 <= total / N) continue; // overuse only
+    // Dunning (1993) log-likelihood over the full 2×2 table
+    const c2 = N1 - a;
+    const d2 = N2 - b;
     const e1 = (N1 * total) / N;
     const e2 = (N2 * total) / N;
-    const g2 = 2 * ((a > 0 ? a * Math.log(a / e1) : 0) + (b > 0 ? b * Math.log(b / e2) : 0));
+    const e3 = (N1 * (c2 + d2)) / N;
+    const e4 = (N2 * (c2 + d2)) / N;
+    const term = (o, ex) => (o > 0 ? o * Math.log(o / ex) : 0);
+    const g2 = 2 * (term(a, e1) + term(b, e2) + term(c2, e3) + term(d2, e4));
+    if (g2 < G2_FLOOR) continue;
     scored.push({ e, a, b, g2 });
   }
   scored.sort((x, y) => y.g2 - x.g2);
@@ -260,8 +279,14 @@ for (let ri = 0; ri <= ALL; ri++) {
 }
 
 // ---- sample sentences: two per register, each showing a keyword in use ------
-const sentenceById = db.query("SELECT text, translation, collection FROM sentences WHERE id = ?");
-const sentencesWithWord = db.query("SELECT DISTINCT sentence_id sid FROM corpus_tokens WHERE surface_norm = ? AND script = 'latn' LIMIT 500");
+const sentenceById = db.query("SELECT text, translation, collection, document FROM sentences WHERE id = ?");
+const sentencesWithWord = db.query(
+  "SELECT DISTINCT sentence_id sid FROM corpus_tokens WHERE surface_fold = ? AND script = 'latn' ORDER BY sentence_id LIMIT 5000",
+);
+const surfaceInSentence = db.query(
+  "SELECT surface FROM corpus_tokens WHERE sentence_id = ? AND surface_fold = ? LIMIT 1",
+);
+const speakerLabel = /^[^\s：:]{1,10}[:：]/;
 const samples = [];
 for (let ri = 0; ri < ALL; ri++) {
   const id = REG_IDS[ri];
@@ -270,32 +295,54 @@ for (let ri = 0; ri < ALL; ri++) {
   for (const { e } of pool) {
     if (used.size >= 2) break;
     const focus = display(e.w);
-    const hit = sentencesWithWord
-      .all(focus)
+    const candidates = sentencesWithWord
+      .all(e.fold)
       .filter((r) => sentenceReg.get(r.sid) === ri && !used.has(r.sid))
       .map((r) => ({ sid: r.sid, len: sentenceLen.get(r.sid) ?? 0 }))
       .filter((r) => r.len >= 8 && r.len <= 25)
-      .sort((a, b) => a.len - b.len || (a.sid < b.sid ? -1 : 1))[0];
-    if (!hit) continue;
-    const s = sentenceById.get(hit.sid);
-    if (!s || /^[A-ZＡ-Ｚa-z][:：]/.test(s.text)) continue;
-    used.add(hit.sid);
+      .sort((a, b) => a.len - b.len || (a.sid < b.sid ? -1 : 1));
+    let picked = null;
+    for (const cand of candidates) {
+      const s = sentenceById.get(cand.sid);
+      if (!s) continue;
+      if (speakerLabel.test(s.text) || (s.translation && speakerLabel.test(s.translation))) continue;
+      if (/[-‐]$/.test(s.text.trim())) continue; // line-continuation fragments
+      if (!picked || (!picked.s.translation && s.translation)) picked = { sid: cand.sid, s };
+      if (picked.s.translation) break;
+    }
+    if (!picked) continue;
+    used.add(picked.sid);
     samples.push({
       register: id,
-      text: s.text,
-      ...(s.translation && { translation: s.translation }),
-      collection: s.collection || "（無題）",
-      focus,
+      text: picked.s.text,
+      ...(picked.s.translation && { translation: picked.s.translation }),
+      collection: picked.s.collection || picked.s.document || "（無題）",
+      // the word as spelled in this sentence, so the page highlight matches
+      focus: surfaceInSentence.get(picked.sid, e.fold)?.surface ?? focus,
     });
   }
 }
 
+// grams are keyed on folded forms (matching /v1/freq/ngram); display each word
+// in its corpus-wide commonest spelling
+const displayByFold = new Map();
+const gramDisplay = (foldKey) =>
+  foldKey
+    .split(" ")
+    .map((f) => {
+      if (!displayByFold.has(f)) {
+        const w = words.get(f);
+        displayByFold.set(f, w ? display(w) : f);
+      }
+      return displayByFold.get(f);
+    })
+    .join(" ");
 const topGrams = (map, ri) =>
   [...map.entries()]
     .filter(([, counts]) => counts[ri] > 0)
     .sort((a, b) => b[1][ri] - a[1][ri])
     .slice(0, TOP_NGRAMS)
-    .map(([g, counts]) => ({ g, n: counts[ri] }));
+    .map(([g, counts]) => ({ g: gramDisplay(g), n: counts[ri] }));
 
 const perRegister = {};
 for (let ri = 0; ri < ALL; ri++) {
@@ -312,6 +359,7 @@ for (let ri = 0; ri < ALL; ri++) {
     types,
     pos: Object.fromEntries([...posByReg[ri].entries()].sort((a, b) => b[1] - a[1])),
     untagged: untaggedByReg[ri],
+    sentencesWithWords: lenLists[ri].length,
     lengthHist: [...lenHist[ri]],
     medianLength: median(lenLists[ri]),
     meanLength: mean(lenLists[ri]),
@@ -332,18 +380,20 @@ const dialects = [...dialectByRegion.entries()].map(([region, dmap]) => {
   return { region, sentences: entries.reduce((s, [, n]) => s + n, 0), dialects: top };
 }).sort((a, b) => b.sentences - a.sentences);
 
-const collectionDialect = new Map();
+const collectionDialect = new Map(); // collection -> {dialect, n}, keeping the most frequent
 for (const row of db
-  .query("SELECT collection, dialect, COUNT(*) n FROM sentences WHERE dialect != '' GROUP BY collection, dialect ORDER BY n")
+  .query(`SELECT COALESCE(NULLIF(collection, ''), NULLIF(document, ''), '（無題）') coll, dialect, COUNT(*) n
+    FROM sentences WHERE dialect != '' GROUP BY coll, dialect`)
   .all()) {
-  collectionDialect.set(row.collection || "（無題）", row.dialect); // last row per collection = most frequent
+  const cur = collectionDialect.get(row.coll);
+  if (!cur || row.n > cur.n) collectionDialect.set(row.coll, { dialect: row.dialect, n: row.n });
 }
 
 const collectionsOut = [...collectionStats.entries()]
   .map(([name, c]) => ({
     name,
     register: c.register,
-    dialect: collectionDialect.get(name) ?? null,
+    dialect: collectionDialect.get(name)?.dialect ?? null,
     sentences: c.sentences,
     words: c.words,
     types: c.types.size,
@@ -362,6 +412,7 @@ const stats = {
     documents: db.query("SELECT COUNT(DISTINCT document) n FROM sentences").get().n,
     collections: collectionStats.size,
     tagged: tokensByReg[ALL] - untaggedByReg[ALL],
+    sentencesWithWords: lenLists[ALL].length,
     lengthHist: [...lenHist[ALL]],
     medianLength: median(lenLists[ALL]),
     meanLength: mean(lenLists[ALL]),
@@ -369,9 +420,6 @@ const stats = {
     untagged: untaggedByReg[ALL],
   },
   registers: perRegister,
-  topWords: topWords.all,
-  bigrams: topGrams(bigrams, ALL),
-  trigrams: topGrams(trigrams, ALL),
   zipf,
   dialects,
   collections: collectionsOut,
