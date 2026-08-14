@@ -520,7 +520,7 @@ const togglePin = (r) => setPin(pin === r ? null : r);
 const onActivate = (el, run) => {
   el.addEventListener("click", run);
   el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); run(); }
+    if ((e.key === "Enter" || e.key === " ") && !e.repeat) { e.preventDefault(); run(); }
   });
 };
 

@@ -8,9 +8,10 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 
 const ROOT = new URL("../public/", import.meta.url).pathname;
+const root = resolve(ROOT);
 mkdirSync(new URL("../build/", import.meta.url).pathname, { recursive: true });
 
 const TYPES = { html: "text/html", json: "application/json" };
@@ -21,8 +22,8 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let p = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
     if (!p.includes(".")) p += ".html";
-    const file = resolve(ROOT, p);
-    if (!file.startsWith(resolve(ROOT))) return new Response("forbidden", { status: 403 });
+    const file = resolve(root, p);
+    if (file !== root && !file.startsWith(root + sep)) return new Response("forbidden", { status: 403 });
     const ext = p.split(".").pop();
     return new Response(Bun.file(file), { headers: { "content-type": TYPES[ext] ?? "text/plain" } });
   },
