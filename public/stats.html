@@ -213,11 +213,11 @@
   .phrase .n { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
 
   /* keyness dumbbells */
-  #keyviz svg { width: 100%; height: auto; display: block; }
-  #keyviz text { font-family: var(--ui); font-size: 11px; fill: var(--muted); }
-  #keyviz text.w { font-family: var(--mono); font-size: 13px; fill: var(--ink); }
-  #keyviz text.fx { font-family: var(--mono); font-size: 11px; }
-  #keyviz .grid { stroke: var(--line); stroke-width: 1; }
+  #keyviz svg, #ssigviz svg { width: 100%; height: auto; display: block; }
+  #keyviz text, #ssigviz text { font-family: var(--ui); font-size: 11px; fill: var(--muted); }
+  #keyviz text.w, #ssigviz text.w { font-family: var(--mono); font-size: 13px; fill: var(--ink); }
+  #keyviz text.fx, #ssigviz text.fx { font-family: var(--mono); font-size: 11px; }
+  #keyviz .grid, #ssigviz .grid { stroke: var(--line); stroke-width: 1; }
   .legend { display: flex; gap: 18px; align-items: center; font-size: 12px; color: var(--muted);
     margin-top: 6px; flex-wrap: wrap; }
   .legend .k { display: inline-flex; align-items: center; gap: 6px; }
@@ -1036,13 +1036,19 @@ function dumbbellSVG(rows, color, hereName) {
   rows.forEach((k, i) => {
     const y = T2 + i * RH + RH / 2;
     const xr = X2(Math.max(k.pmRest, 1)), xk = X2(k.pm);
-    const fold = k.pmRest > 0 ? "×" + (k.pm / k.pmRest < 20 ? (k.pm / k.pmRest).toFixed(1) : Math.round(k.pm / k.pmRest)) : "only here";
-    svg += `<g tabindex="0" role="img" aria-label="${esc(k.w)}: ${fmt(k.pm)} per million here, ${fmt(k.pmRest)} in the rest"
-        data-tip="<b>${esc(k.w)}</b><br>${fmt(k.pm)} per million in ${esc(hereName).toLowerCase()}<br><span class=m>${fmt(k.pmRest)} per million elsewhere · G² ${fmt(Math.round(k.g2))}</span>">
+    const onlyHere = k.pmRest <= 0;
+    const fold = onlyHere ? "only here" : "×" + (k.pm / k.pmRest < 20 ? (k.pm / k.pmRest).toFixed(1) : Math.round(k.pm / k.pmRest));
+    const restMarks = onlyHere
+      ? ""
+      : `<line x1="${xr}" x2="${xk}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="2" opacity=".45"/>
+      <circle cx="${xr}" cy="${y}" r="4" fill="var(--muted)" stroke="var(--panel)" stroke-width="2"/>`;
+    const restText = onlyHere ? "not found in the rest" : `${fmt(k.pmRest)} per million in the rest`;
+    const restTip = onlyHere ? "not found elsewhere" : `${fmt(k.pmRest)} per million elsewhere`;
+    svg += `<g tabindex="0" role="img" aria-label="${esc(k.w)}: ${fmt(k.pm)} per million here, ${restText}"
+        data-tip="<b>${esc(k.w)}</b><br>${fmt(k.pm)} per million in ${esc(hereName).toLowerCase()}<br><span class=m>${restTip} · G² ${fmt(Math.round(k.g2))}</span>">
       <rect x="0" y="${y - RH / 2}" width="${W3}" height="${RH}" fill="transparent"/>
       <a href="${searchHref(k.w)}"><text class="w" lang="ain" x="${L2 - 10}" y="${y + 4}" text-anchor="end">${esc(k.w)}</text></a>
-      <line x1="${xr}" x2="${xk}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="2" opacity=".45"/>
-      <circle cx="${xr}" cy="${y}" r="4" fill="var(--muted)" stroke="var(--panel)" stroke-width="2"/>
+      ${restMarks}
       <circle cx="${xk}" cy="${y}" r="5.5" fill="${color}" stroke="var(--panel)" stroke-width="2"/>
       <text class="fx" x="${W3 - R2 + 8}" y="${y + 4}" fill="var(--muted)">${fold}</text></g>`;
   });
