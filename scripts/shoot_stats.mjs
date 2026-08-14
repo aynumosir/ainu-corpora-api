@@ -41,11 +41,12 @@ async function shoot(name, scheme, { width = 1240, height = 940, section = null,
     reducedMotion: "reduce",
   });
   const page = await ctx.newPage();
+  page.setDefaultTimeout(120000); // survive a loaded machine
   page.on("console", (m) => { if (m.type() === "error") { sawPageError = true; console.log(`[${name}] console error:`, m.text()); } });
   page.on("pageerror", (e) => { sawPageError = true; console.log(`[${name}] page error:`, e.message); });
   await page.goto(base + "/stats", { waitUntil: "networkidle" });
-  if (section) await page.locator(section).scrollIntoViewIfNeeded();
   if (fn) await fn(page);
+  if (section) await page.locator(section).scrollIntoViewIfNeeded();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${BUILD}${name}.png`, fullPage });
   console.log(name, "ok");
@@ -74,6 +75,15 @@ try {
     section: "#histgrid",
     fn: async (p) => { await p.click('#strip .seg[data-reg="social"]'); },
   });
+  // slices: switch via the filter row, wait for the slice note, then look
+  const pickSlice = (id, word) => async (p) => {
+    await p.click(`#filters button[data-slice="${id}"]`);
+    await p.waitForFunction((w) => document.querySelector("#slicenote")?.textContent.includes(w), word);
+    await p.waitForTimeout(400);
+  };
+  await shoot("stats-slice-sakhalin", "light", { fn: pickSlice("sakhalin", "Sakhalin") });
+  await shoot("stats-slice-sakhalin-sig", "light", { fn: pickSlice("sakhalin", "Sakhalin"), section: "#slicesig" });
+  await shoot("stats-slice-modern-dark", "dark", { fn: pickSlice("modern", "Modern"), section: "#slicesig" });
   await shoot("stats-mobile", "light", { width: 375, height: 800 });
   await shoot("stats-mobile-registers", "light", { width: 375, height: 800, section: "#registers" });
 } finally {

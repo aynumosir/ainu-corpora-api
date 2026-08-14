@@ -185,6 +185,18 @@
   body[data-pin] .histpanel.pinned { opacity: 1; outline: 2px solid var(--ink); outline-offset: -1px; }
 
   /* register chips (04b / 05) */
+  /* corpus slice filter — scopes every section below it */
+  #filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 22px 0 0; }
+  #filters .flabel { font-size: 11px; color: var(--muted); letter-spacing: .08em;
+    text-transform: uppercase; margin-right: 4px; }
+  #filters button { display: inline-flex; align-items: center; gap: 7px; background: var(--chip);
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px; font: inherit;
+    font-size: 13px; color: var(--ink); cursor: pointer; }
+  #filters button .n { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  #filters button[aria-pressed=true] { outline: 2px solid var(--ink); outline-offset: -1px;
+    font-weight: 600; background: var(--panel); }
+  #slicenote { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; min-height: 1.2em; }
+
   .regchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
   .regchips button { display: inline-flex; align-items: center; gap: 6px; background: var(--chip);
     border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; font: inherit;
@@ -299,17 +311,22 @@
 
 <main class="wrap">
 
+<div id="filters" role="group" aria-label="Corpus slice" hidden>
+  <span class="flabel">Show</span>
+</div>
+<p id="slicenote" hidden></p>
+
 <section id="overview">
   <div class="kicker"><span>Corpus statistics · 統計</span><span id="snapshot"></span></div>
   <div class="grid">
     <div class="stat"><div class="v" data-n="1763691">1,763,691</div><div class="l">tokens</div>
       <div class="c">every word and mark in the corpus</div></div>
     <div class="stat"><div class="v" data-n="209790">209,790</div><div class="l">sentences</div>
-      <div class="c">oral narratives, print, and social media</div></div>
+      <div class="c" id="c-sentences">oral narratives, print, and social media</div></div>
     <div class="stat"><div class="v" data-n="48682">48,682</div><div class="l">word forms</div>
       <div class="c" id="c-hapax">26,920 of them occur exactly once</div></div>
     <div class="stat"><div class="v" data-n="49">49</div><div class="l">collections</div>
-      <div class="c">grouped into 8 registers below</div></div>
+      <div class="c" id="c-registers">grouped into 8 registers below</div></div>
   </div>
   <div id="speaks" hidden>
     <div class="top">
@@ -325,6 +342,14 @@
 </section>
 
 <div id="loaderr"><div>Statistics data could not be loaded (stats.json).</div><button type="button" onclick="boot()">Retry</button></div>
+
+<section id="slicesig" hidden>
+  <h2 id="ssig-title"></h2>
+  <p class="lede" id="ssig-lede"></p>
+  <div id="ssigviz"></div>
+  <div class="legend" id="ssiglegend"></div>
+  <details class="tview"><summary>View as table</summary><div id="ssigtable"></div></details>
+</section>
 
 <section id="registers" class="reveal" hidden>
   <h2><span class="no" aria-hidden="true">01</span>Registers</h2>
@@ -430,6 +455,10 @@
   <ul>
     <li>Every sentence inherits the register of its source collection
       (<a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/data/collection_registers.json">collection→register table</a>).</li>
+    <li>Slices: Hokkaidō and Sakhalin cover sentences whose source metadata records a region;
+      traditional and modern follow a per-collection era tag in the same table. The Bible
+      translation and トピック別 アイヌ語会話辞典 sit outside the era split. Within a slice,
+      register keywords score against the rest of that slice.</li>
     <li>Word-level statistics count Latin-script tokens; forms are compared with accent marks
       and apostrophe-written glottal stops folded, and displayed in their commonest spelling.</li>
     <li>Keyness: log-likelihood G² (Dunning 1993), each register against the rest of the corpus,
@@ -478,7 +507,11 @@ const ROMAJI = { "沙流": "Saru", "静内": "Shizunai", "鵡川": "Mukawa", "�
   "北海道": "Hokkaidō", "石狩川": "Ishikari river" };
 const REGION_LABEL = { "北海道": "Hokkaidō", "樺太": "Sakhalin", "unspecified": "No dialect record" };
 
-let D = null;           // stats.json
+let D = null;           // dataset currently rendered (whole corpus or a slice)
+let D_ALL = null;       // the whole-corpus dataset (carries the slice index)
+let sliceId = "all";
+const sliceCache = new Map();
+let REG_ACTIVE = [];    // registers present in the current dataset, display order
 let pin = null;         // pinned register id or null
 let keyReg = "oral";    // register selected in 04b/05
 let keyCls = "content"; // content | function | all
@@ -512,15 +545,18 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideTip();
 addEventListener("scroll", hideTip, { passive: true });
 
 // ── pinning ────────────────────────────────────────────────────────────────
+function writeHash() {
+  const parts = [];
+  if (sliceId !== "all") parts.push("slice=" + sliceId);
+  if (pin) parts.push("pin=" + pin);
+  if (parts.length) history.replaceState(null, "", "#" + parts.join("&"));
+  else if (/^#(slice|pin)=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+}
 function setPin(r) {
   pin = r;
-  if (r) {
-    document.body.dataset.pin = r;
-    history.replaceState(null, "", "#pin=" + r);
-  } else {
-    delete document.body.dataset.pin;
-    if (/^#pin=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
-  }
+  if (r) document.body.dataset.pin = r;
+  else delete document.body.dataset.pin;
+  writeHash();
   document.querySelectorAll("[data-reg]").forEach((el) => {
     el.classList.toggle("pinned", el.dataset.reg === r);
     if (el.getAttribute("role") === "button") el.setAttribute("aria-pressed", el.dataset.reg === r);
@@ -544,7 +580,9 @@ const onActivate = (el, run) => {
 async function boot() {
   $("#loaderr").style.display = "none";
   try {
-    D = await (await fetch("/stats.json")).json();
+    D_ALL = await (await fetch("/stats.json")).json();
+    sliceCache.set("all", D_ALL);
+    D = D_ALL;
     renderAll();
   } catch (e) {
     console.error(e);
@@ -552,6 +590,10 @@ async function boot() {
   }
 }
 function renderAll() {
+  REG_ACTIVE = REG_ORDER.filter((r) => D.registers[r]?.sentences > 0);
+  if (!REG_ACTIVE.includes(keyReg)) keyReg = REG_ACTIVE[0];
+  renderFilters();
+  renderSliceSig();
   renderHero();
   renderSpeaks();
   renderStrip();
@@ -565,13 +607,79 @@ function renderAll() {
   renderHeatmap();
   renderCollections();
   renderMethods();
-  document.querySelectorAll("main section[hidden]").forEach((s) => (s.hidden = false));
-  revealObserver();
-  navObserver();
-  const missing = Object.keys(D.registers).filter((r) => !REG_ORDER.includes(r));
-  if (missing.length) console.warn("registers absent from REG_ORDER:", missing.join(", "));
-  const h = location.hash.match(/#pin=(\w+)/);
-  if (h && D.registers[h[1]]) setPin(h[1]);
+  document.querySelectorAll("main section[hidden]").forEach((s) => {
+    if (s.id !== "slicesig" || sliceId !== "all") s.hidden = false;
+  });
+  if (sliceId === "all") $("#slicesig").hidden = true;
+  if (!boot.observed) {
+    boot.observed = true;
+    revealObserver();
+    navObserver();
+    const missing = Object.keys(D.registers).filter((r) => !REG_ORDER.includes(r));
+    if (missing.length) console.warn("registers absent from REG_ORDER:", missing.join(", "));
+    const h = Object.fromEntries(location.hash.slice(1).split("&").map((p) => p.split("=")));
+    const wanted = h.slice && D_ALL.slices?.some((s) => s.id === h.slice) ? h.slice : null;
+    const pinWanted = h.pin && D.registers[h.pin] ? h.pin : null;
+    if (wanted) setSlice(wanted).then(() => { if (pinWanted && D.registers[pinWanted]?.sentences > 0) setPin(pinWanted); });
+    else if (pinWanted) setPin(pinWanted);
+  }
+}
+
+// ── corpus slice filter ────────────────────────────────────────────────────
+async function setSlice(id) {
+  if (id === sliceId) return;
+  let data = sliceCache.get(id);
+  if (!data) {
+    try {
+      data = await (await fetch(`/stats-${id}.json`)).json();
+    } catch (e) {
+      console.error("slice load failed:", e);
+      return;
+    }
+    sliceCache.set(id, data);
+  }
+  sliceId = id;
+  D = data;
+  if (pin && !(D.registers[pin]?.sentences > 0)) setPin(null);
+  writeHash();
+  renderAll();
+}
+function renderFilters() {
+  const box = $("#filters");
+  box.hidden = false;
+  $("#slicenote").hidden = sliceId === "all";
+  if (sliceId !== "all") $("#slicenote").textContent =
+    `Showing ${D.slice.label} only — ${D.slice.basis}. ` +
+    `Every chart and table below covers this slice.`;
+  const chips = [{ id: "all", label: "All corpus", ja: "全体", sentences: D_ALL.totals.sentences }]
+    .concat(D_ALL.slices ?? []);
+  box.querySelectorAll("button").forEach((b) => b.remove());
+  for (const c of chips) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.slice = c.id;
+    b.setAttribute("aria-pressed", c.id === sliceId);
+    b.innerHTML = `${esc(c.label)} <span class="n">${fmt(c.sentences)}</span>`;
+    if (c.basis) b.dataset.tip = `<b>${esc(c.label)}</b> · ${esc(c.ja)}<br><span class="m">${esc(c.basis)}</span>`;
+    b.addEventListener("click", () => setSlice(c.id));
+    box.appendChild(b);
+  }
+}
+function renderSliceSig() {
+  const sec = $("#slicesig");
+  if (sliceId === "all" || !D.sliceKeywords?.length) { sec.hidden = true; return; }
+  sec.hidden = false;
+  $("#ssig-title").textContent = `What sets ${D.slice.label} apart`;
+  $("#ssig-lede").textContent =
+    `Words this slice uses far beyond its share of the corpus — its own vocabulary, ` +
+    `scored against everything else.`;
+  const rows = D.sliceKeywords.filter((k) => !k.f).slice(0, 15);
+  $("#ssigviz").innerHTML = dumbbellSVG(rows, "var(--accent)", D.slice.label);
+  $("#ssiglegend").innerHTML =
+    `<span class="k"><span class="dotk" style="background:var(--accent)"></span>${esc(D.slice.label)}</span>` +
+    `<span class="k"><span class="dotk" style="background:var(--muted)"></span>rest of the corpus</span>` +
+    `<span class="k">log scale, per million tokens</span>`;
+  $("#ssigtable").innerHTML = keywordTable(D.sliceKeywords);
 }
 
 // ── hero ───────────────────────────────────────────────────────────────────
@@ -579,8 +687,15 @@ function renderHero() {
   $("#snapshot").textContent = "snapshot " + D.generated;
   const t = D.totals;
   const vals = [t.tokens, t.sentences, t.types, t.collections];
-  document.querySelectorAll("#overview .stat .v").forEach((el, i) => { el.dataset.n = vals[i]; });
+  const els = document.querySelectorAll("#overview .stat .v");
+  els.forEach((el, i) => { el.dataset.n = vals[i]; });
   $("#c-hapax").textContent = fmt(t.hapax) + " of them occur exactly once";
+  $("#c-registers").textContent = `grouped into ${REG_ACTIVE.length} register${REG_ACTIVE.length === 1 ? "" : "s"} below`;
+  $("#c-sentences").textContent = sliceId === "all"
+    ? "oral narratives, print, and social media"
+    : `every sentence in the ${D.slice.label} slice`;
+  if (renderHero.done) { els.forEach((el) => { el.textContent = fmt(+el.dataset.n); }); return; }
+  renderHero.done = true;
   const io = new IntersectionObserver((es) => {
     es.forEach((en) => {
       if (!en.isIntersecting) return;
@@ -602,28 +717,33 @@ function renderHero() {
 // ── the corpus speaks ──────────────────────────────────────────────────────
 let spI = 0, spTimer = null, spPaused = false;
 function renderSpeaks() {
-  if (!D.samples?.length) return;
   const box = $("#speaks");
+  spStop();
+  spI = 0;
+  if (!D.samples?.length) { box.hidden = true; return; }
   box.hidden = false;
   $("#speaks .dots").innerHTML = D.samples
     .map((_, i) => `<i data-i="${i}" role="button" tabindex="0" aria-label="Sentence ${i + 1}"></i>`)
     .join("");
-  box.querySelectorAll(".nav button[data-d]").forEach((b) =>
-    b.addEventListener("click", () => { spGo(spI + +b.dataset.d); spHold(); }));
-  $("#sp-pause").addEventListener("click", () => {
-    spPaused = !spPaused;
-    const b = $("#sp-pause");
-    b.setAttribute("aria-pressed", spPaused);
-    b.setAttribute("aria-label", spPaused ? "Resume rotation" : "Pause rotation");
-    b.textContent = spPaused ? "▶" : "⏸";
-    if (spPaused) spStop(); else spStart();
-  });
   box.querySelectorAll(".dots i").forEach((d) =>
     onActivate(d, () => { spGo(+d.dataset.i); spHold(); }));
-  box.addEventListener("pointerenter", spStop);
-  box.addEventListener("pointerleave", spStart);
-  box.addEventListener("focusin", spStop);
-  box.addEventListener("focusout", spStart);
+  if (!renderSpeaks.wired) {
+    renderSpeaks.wired = true;
+    box.querySelectorAll(".nav button[data-d]").forEach((b) =>
+      b.addEventListener("click", () => { spGo(spI + +b.dataset.d); spHold(); }));
+    $("#sp-pause").addEventListener("click", () => {
+      spPaused = !spPaused;
+      const b = $("#sp-pause");
+      b.setAttribute("aria-pressed", spPaused);
+      b.setAttribute("aria-label", spPaused ? "Resume rotation" : "Pause rotation");
+      b.textContent = spPaused ? "▶" : "⏸";
+      if (spPaused) spStop(); else spStart();
+    });
+    box.addEventListener("pointerenter", spStop);
+    box.addEventListener("pointerleave", spStart);
+    box.addEventListener("focusin", spStop);
+    box.addEventListener("focusout", spStart);
+  }
   spGo(0);
   spStart();
 }
@@ -669,7 +789,7 @@ function renderStrip() {
   const strip = $("#strip");
   const labels = $(".striplabels");
   let acc = 0, small = 0, smallCount = 0;
-  strip.innerHTML = REG_ORDER.map((r) => {
+  strip.innerHTML = REG_ACTIVE.map((r) => {
     const g = D.registers[r];
     const share = g.words / total;
     const seg = `<div class="seg" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}'
@@ -681,7 +801,7 @@ function renderStrip() {
   const SHORT = { social: "Social media", pedagogy: "Textbooks", dictionary: "Dictionary",
     conversation: "Conversation", scripture: "Bible", press: "News" };
   let li = 0;
-  labels.innerHTML = REG_ORDER.map((r) => {
+  labels.innerHTML = REG_ACTIVE.map((r) => {
     const g = D.registers[r];
     const share = g.words / total;
     const mid = acc + share / 2;
@@ -696,9 +816,9 @@ function renderStrip() {
   strip.querySelectorAll(".seg").forEach((el) => onActivate(el, () => togglePin(el.dataset.reg)));
 }
 function renderRegBars() {
-  const rows = [...REG_ORDER].sort((a, b) => D.registers[b][regMetric] - D.registers[a][regMetric]);
+  const rows = [...REG_ACTIVE].sort((a, b) => D.registers[b][regMetric] - D.registers[a][regMetric]);
   const max = D.registers[rows[0]][regMetric] || 1;
-  const total = REG_ORDER.reduce((s, r) => s + D.registers[r][regMetric], 0) || 1;
+  const total = REG_ACTIVE.reduce((s, r) => s + D.registers[r][regMetric], 0) || 1;
   $("#regbars").innerHTML = rows.map((r) => {
     const g = D.registers[r];
     const v = g[regMetric];
@@ -718,7 +838,7 @@ function renderRegBars() {
     el.classList.toggle("pinned", el.dataset.reg === pin));
   $("#regtable").innerHTML = `<table><tr><th>Register</th><th class="num">Sentences</th>
     <th class="num">Words</th><th class="num">Word forms</th></tr>` +
-    REG_ORDER.map((r) => { const g = D.registers[r]; return `<tr><td>${esc(g.label)} · ${esc(g.ja)}</td>
+    REG_ACTIVE.map((r) => { const g = D.registers[r]; return `<tr><td>${esc(g.label)} · ${esc(g.ja)}</td>
       <td class="num">${fmt(g.sentences)}</td><td class="num">${fmt(g.words)}</td>
       <td class="num">${fmt(g.types)}</td></tr>`; }).join("") + "</table>";
 }
@@ -827,7 +947,7 @@ const rebin = (h) => { // 31 one-token bins -> 15 two-token bins + 31+
 function renderHists() {
   const corpus = rebin(D.totals.lengthHist);
   const cTotal = corpus.reduce((a, b) => a + b, 0);
-  const perReg = REG_ORDER.map((r) => {
+  const perReg = REG_ACTIVE.map((r) => {
     const bins = rebin(D.registers[r].lengthHist);
     const t = bins.reduce((a, b) => a + b, 0);
     return { r, bins, t };
@@ -866,18 +986,19 @@ function renderHists() {
 
 // ── register chips (shared by 04b + 05) ────────────────────────────────────
 function renderChips() {
-  const html = REG_ORDER.map((r) =>
+  const html = REG_ACTIVE.map((r) =>
     `<button type="button" data-r="${r}" aria-pressed="${r === keyReg}">
       <span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(regLabel(r))}</button>`).join("");
   for (const id of ["chips-phrases", "chips-key"]) {
     const el = document.getElementById(id);
     el.innerHTML = html;
-    el.addEventListener("click", (e) => {
+    if (!renderChips.wired) el.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
       keyReg = b.dataset.r;
       renderPhrases(); renderKeyness(); syncChips();
     });
   }
+  renderChips.wired = true;
 }
 function syncChips() {
   document.querySelectorAll(".regchips button").forEach((b) =>
@@ -894,6 +1015,45 @@ function renderPhrases() {
   $("#phrases").innerHTML =
     `<div><h3>Bigrams</h3>${list(g.bigrams, "No bigram data for this register.")}</div>` +
     `<div><h3>Trigrams</h3>${list(g.trigrams, "No trigram data for this register.")}</div>`;
+}
+
+// ── keyness dumbbells (shared by 05 and the slice signature) ───────────────
+function dumbbellSVG(rows, color, hereName) {
+  if (!rows.length) return `<p class="footnote">No qualifying words for this view.</p>`;
+  const pmMax = Math.max(...rows.map((k) => k.pm));
+  const pmMin = Math.max(1, Math.min(...rows.flatMap((k) => [k.pm, Math.max(k.pmRest, 1)])));
+  const L2 = 150, R2 = 96, W3 = 680, RH = 30, T2 = 24;
+  const H3 = T2 + rows.length * RH + 8;
+  const X2 = (pm) => L2 + ((Math.log10(Math.max(pm, 1)) - Math.log10(pmMin)) /
+    (Math.log10(pmMax) - Math.log10(pmMin) || 1)) * (W3 - L2 - R2);
+  let svg = "";
+  for (const tk of [10, 100, 1000, 10000, 100000]) {
+    if (tk < pmMin || tk > pmMax) continue;
+    svg += `<line class="grid" x1="${X2(tk)}" x2="${X2(tk)}" y1="${T2 - 6}" y2="${H3 - 8}"/>` +
+      `<text x="${X2(tk)}" y="${T2 - 10}" text-anchor="middle">${tk >= 1000 ? tk / 1000 + "k" : tk}</text>`;
+  }
+  svg += `<text x="${L2 - 10}" y="${T2 - 10}" text-anchor="end">per million →</text>`;
+  rows.forEach((k, i) => {
+    const y = T2 + i * RH + RH / 2;
+    const xr = X2(Math.max(k.pmRest, 1)), xk = X2(k.pm);
+    const fold = k.pmRest > 0 ? "×" + (k.pm / k.pmRest < 20 ? (k.pm / k.pmRest).toFixed(1) : Math.round(k.pm / k.pmRest)) : "only here";
+    svg += `<g tabindex="0" role="img" aria-label="${esc(k.w)}: ${fmt(k.pm)} per million here, ${fmt(k.pmRest)} in the rest"
+        data-tip="<b>${esc(k.w)}</b><br>${fmt(k.pm)} per million in ${esc(hereName).toLowerCase()}<br><span class=m>${fmt(k.pmRest)} per million elsewhere · G² ${fmt(Math.round(k.g2))}</span>">
+      <rect x="0" y="${y - RH / 2}" width="${W3}" height="${RH}" fill="transparent"/>
+      <a href="${searchHref(k.w)}"><text class="w" lang="ain" x="${L2 - 10}" y="${y + 4}" text-anchor="end">${esc(k.w)}</text></a>
+      <line x1="${xr}" x2="${xk}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="2" opacity=".45"/>
+      <circle cx="${xr}" cy="${y}" r="4" fill="var(--muted)" stroke="var(--panel)" stroke-width="2"/>
+      <circle cx="${xk}" cy="${y}" r="5.5" fill="${color}" stroke="var(--panel)" stroke-width="2"/>
+      <text class="fx" x="${W3 - R2 + 8}" y="${y + 4}" fill="var(--muted)">${fold}</text></g>`;
+  });
+  return `<svg viewBox="0 0 ${W3} ${H3}" role="img" aria-label="Words most characteristic of ${esc(hereName)}">${svg}</svg>`;
+}
+function keywordTable(rows) {
+  return `<table><tr><th>Form</th><th class="num">Here</th>
+    <th class="num">Per million</th><th class="num">Rest, per million</th><th class="num">G²</th></tr>` +
+    rows.map((k) => `<tr><td><a class="w" lang="ain" href="${searchHref(k.w)}">${esc(k.w)}</a>${k.f ? ' <span class="m">(function)</span>' : ""}</td>
+      <td class="num">${fmt(k.n)}</td><td class="num">${fmt(k.pm)}</td>
+      <td class="num">${fmt(k.pmRest)}</td><td class="num">${fmt(Math.round(k.g2))}</td></tr>`).join("") + "</table>";
 }
 
 // ── 05 keyness dumbbells ───────────────────────────────────────────────────
@@ -913,43 +1073,12 @@ function renderKeyness() {
     $("#keylegend").innerHTML = ""; $("#keytable").innerHTML = "";
     return;
   }
-  const pmMax = Math.max(...rows.map((k) => k.pm));
-  const pmMin = Math.max(1, Math.min(...rows.flatMap((k) => [k.pm, Math.max(k.pmRest, 1)])));
-  const L2 = 150, R2 = 96, W3 = 680, RH = 30, T2 = 24;
-  const H3 = T2 + rows.length * RH + 8;
-  const X2 = (pm) => L2 + ((Math.log10(Math.max(pm, 1)) - Math.log10(pmMin)) /
-    (Math.log10(pmMax) - Math.log10(pmMin) || 1)) * (W3 - L2 - R2);
-  let svg = "";
-  for (const tk of [10, 100, 1000, 10000, 100000]) {
-    if (tk < pmMin || tk > pmMax) continue;
-    svg += `<line class="grid" x1="${X2(tk)}" x2="${X2(tk)}" y1="${T2 - 6}" y2="${H3 - 8}"/>` +
-      `<text x="${X2(tk)}" y="${T2 - 10}" text-anchor="middle">${tk >= 1000 ? tk / 1000 + "k" : tk}</text>`;
-  }
-  svg += `<text x="${L2 - 10}" y="${T2 - 10}" text-anchor="end">per million →</text>`;
-  rows.forEach((k, i) => {
-    const y = T2 + i * RH + RH / 2;
-    const xr = X2(Math.max(k.pmRest, 1)), xk = X2(k.pm);
-    const fold = k.pmRest > 0 ? "×" + (k.pm / k.pmRest < 20 ? (k.pm / k.pmRest).toFixed(1) : Math.round(k.pm / k.pmRest)) : "only here";
-    svg += `<g tabindex="0" role="img" aria-label="${esc(k.w)}: ${fmt(k.pm)} per million here, ${fmt(k.pmRest)} in the rest"
-        data-tip="<b>${esc(k.w)}</b><br>${fmt(k.pm)} per million in ${esc(regLabel(keyReg)).toLowerCase()}<br><span class=m>${fmt(k.pmRest)} per million elsewhere · G² ${fmt(Math.round(k.g2))}</span>">
-      <rect x="0" y="${y - RH / 2}" width="${W3}" height="${RH}" fill="transparent"/>
-      <a href="${searchHref(k.w)}"><text class="w" lang="ain" x="${L2 - 10}" y="${y + 4}" text-anchor="end">${esc(k.w)}</text></a>
-      <line x1="${xr}" x2="${xk}" y1="${y}" y2="${y}" stroke="${REG_COLOR[keyReg]}" stroke-width="2" opacity=".45"/>
-      <circle cx="${xr}" cy="${y}" r="4" fill="var(--muted)" stroke="var(--panel)" stroke-width="2"/>
-      <circle cx="${xk}" cy="${y}" r="5.5" fill="${REG_COLOR[keyReg]}" stroke="var(--panel)" stroke-width="2"/>
-      <text class="fx" x="${W3 - R2 + 8}" y="${y + 4}" fill="var(--muted)">${fold}</text></g>`;
-  });
-  $("#keyviz").innerHTML = `<svg viewBox="0 0 ${W3} ${H3}" role="img"
-    aria-label="Words most characteristic of ${esc(regLabel(keyReg))}">${svg}</svg>`;
+  $("#keyviz").innerHTML = dumbbellSVG(rows, REG_COLOR[keyReg], regLabel(keyReg));
   $("#keylegend").innerHTML =
     `<span class="k"><span class="dotk" style="background:${REG_COLOR[keyReg]}"></span>${esc(regLabel(keyReg))}</span>` +
-    `<span class="k"><span class="dotk" style="background:var(--muted)"></span>rest of the corpus</span>` +
+    `<span class="k"><span class="dotk" style="background:var(--muted)"></span>rest of the selection</span>` +
     `<span class="k">log scale, per million tokens</span>`;
-  $("#keytable").innerHTML = `<table><tr><th>Form</th><th class="num">In register</th>
-    <th class="num">Per million</th><th class="num">Rest, per million</th><th class="num">G²</th></tr>` +
-    rows.map((k) => `<tr><td><a class="w" lang="ain" href="${searchHref(k.w)}">${esc(k.w)}</a>${k.f ? ' <span class="m">(function)</span>' : ""}</td>
-      <td class="num">${fmt(k.n)}</td><td class="num">${fmt(k.pm)}</td>
-      <td class="num">${fmt(k.pmRest)}</td><td class="num">${fmt(Math.round(k.g2))}</td></tr>`).join("") + "</table>";
+  $("#keytable").innerHTML = keywordTable(rows);
 }
 $("#keycls").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
@@ -978,11 +1107,11 @@ function renderHeatmap() {
     return (p[t] ?? 0) / tagged;
   };
   const cols = [...tags, "OTHER"];
-  const allShares = REG_ORDER.flatMap((r) => cols.map((t) => share(r, t)));
+  const allShares = REG_ACTIVE.flatMap((r) => cols.map((t) => share(r, t)));
   const smax = Math.max(...allShares);
   const step = (v) => Math.min(4, Math.floor((v / smax) * 5));
   const MIX = [10, 28, 48, 68, 86];
-  const rows = [...REG_ORDER];
+  const rows = [...REG_ACTIVE];
   if (hmSort) rows.sort((a, b) => share(b, hmSort) - share(a, hmSort));
   $("#hm").innerHTML = `<table class="hm"><tr class="hd"><th scope="col">register</th>` +
     cols.map((t) => `<th scope="col" data-t="${t}" tabindex="0" aria-sort="${hmSort === t ? "descending" : "none"}">${t}${hmSort === t ? " ↓" : ""}</th>`).join("") +

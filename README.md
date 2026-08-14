@@ -163,17 +163,25 @@ a shared tooltip. The register palette was validated for color-vision-deficiency
 separation and surface contrast (Machado–Oliveira–Fernandes simulation, OKLab
 distances) in both color schemes.
 
-The page reads one precomputed asset, `public/stats.json`:
+A filter row slices the whole page: Hokkaidō / Sakhalin (by sentence region
+record) and traditional / modern (by a per-collection era tag). Each slice is
+its own precomputed dataset, fetched on demand, with a slice-vs-corpus keyword
+panel on top of the regular sections.
+
+The page reads precomputed assets, `public/stats.json` plus one
+`public/stats-<slice>.json` per slice:
 
 ```sh
-bun scripts/build_stats.mjs        # reads build/corpus.db → public/stats.json
+bun scripts/build_stats.mjs        # reads build/corpus.db → public/stats*.json
 bun scripts/shoot_stats.mjs        # light/dark/mobile screenshots → build/stats-*.png
 ```
 
 Every sentence inherits a register from its source collection via
-`data/collection_registers.json`; collections absent from that table fall back
-to `other`. Rerun `build_stats.mjs` after each corpus reload so the snapshot
-matches the live token layer.
+`data/collection_registers.json`, and an era (traditional/modern) from the
+`collectionEras` map in the same file; collections absent from the register
+table fall back to `other`, and collections without an era tag stay outside
+the era slices. Rerun `build_stats.mjs` after each corpus reload so the
+snapshots match the live token layer.
 
 ## Unseeded corpus words
 
