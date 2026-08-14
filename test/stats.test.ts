@@ -142,6 +142,23 @@ describe("stats.html", () => {
     expect(page).toContain(`${stats.totals.hapax.toLocaleString("en-US")} of them occur exactly once`);
   });
 
+  test("the toggle's dark block matches the media-query dark block", () => {
+    for (const file of ["../public/stats.html", "../public/index.html"]) {
+      const html = readFileSync(new URL(file, import.meta.url), "utf8");
+      const decls = (block: string) =>
+        [...block.matchAll(/(--[\w-]+|color-scheme)\s*:\s*([^;]+);/g)]
+          .map((m) => `${m[1]}:${m[2].trim()}`)
+          .sort();
+      const media = html.match(
+        /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{([^}]+)\}/,
+      );
+      const override = html.match(/:root\[data-theme="dark"\] \{([^}]+)\}/);
+      expect(media, file).toBeTruthy();
+      expect(override, file).toBeTruthy();
+      expect(decls(override![1]), file).toEqual(decls(media![1]));
+    }
+  });
+
   test("REG_ORDER covers every register in the dataset", () => {
     const m = page.match(/const REG_ORDER = \[([^\]]+)\]/);
     expect(m).toBeTruthy();

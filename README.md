@@ -161,7 +161,10 @@ per-register sentence-length fingerprints, top n-grams, G² keyness lists,
 a POS heatmap, and the full collections table. Charts are inline SVG/CSS with
 a shared tooltip. The register palette was validated for color-vision-deficiency
 separation and surface contrast (Machado–Oliveira–Fernandes simulation, OKLab
-distances) in both color schemes.
+distances) in both color schemes. Both pages carry a ◐ light/dark toggle: the
+OS setting applies by default and a `data-theme` attribute set by the button
+overrides it either way; charts recolor with the page since every chart color
+is a CSS custom property.
 
 A filter row slices the whole page: Hokkaidō / Sakhalin (by sentence region
 record) and traditional / modern (by a per-collection era tag). Each slice is
