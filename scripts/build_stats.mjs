@@ -18,14 +18,19 @@
  *   bun scripts/build_stats.mjs [--db=build/corpus.db] [--out=public/stats.json]
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Database } from "bun:sqlite";
 
-const arg = (name, fallback) => {
+const arg = (name) => {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
-  return hit ? hit.slice(name.length + 3) : fallback;
+  return hit ? hit.slice(name.length + 3) : null;
 };
-const DB_PATH = new URL(arg("db", "../build/corpus.db"), import.meta.url).pathname;
-const OUT = new URL(arg("out", "../public/stats.json"), import.meta.url).pathname;
+const pathArg = (name, fallback) => {
+  const v = arg(name);
+  return v ? resolve(process.cwd(), v) : new URL(fallback, import.meta.url).pathname;
+};
+const DB_PATH = pathArg("db", "../build/corpus.db");
+const OUT = pathArg("out", "../public/stats.json");
 const REGISTERS_PATH = new URL("../data/collection_registers.json", import.meta.url).pathname;
 
 const { registers, collections: collectionRegister } = JSON.parse(readFileSync(REGISTERS_PATH, "utf8"));
@@ -44,9 +49,10 @@ const db = new Database(DB_PATH, { readonly: true });
 
 // ---- sentences: register lookup, dialect + collection tallies -------------
 const sentenceReg = new Map();
+const sentenceColl = new Map();
 const regSentences = new Array(ALL + 1).fill(0);
 const dialectByRegion = new Map(); // region -> Map(dialect -> n)
-const collectionStats = new Map(); // collection -> {register, sentences, tokens, types:Set}
+const collectionStats = new Map(); // collection -> {register, sentences, words, types:Set, lenSum, lenN}
 for (const row of db.query("SELECT id, collection, dialect, region FROM sentences").all()) {
   const regId = collectionRegister[row.collection ?? ""] ?? "other";
   const ri = regIndex.get(regId);
@@ -59,8 +65,9 @@ for (const row of db.query("SELECT id, collection, dialect, region FROM sentence
   const dialect = row.dialect || "unspecified";
   dmap.set(dialect, (dmap.get(dialect) ?? 0) + 1);
   const cname = row.collection || "（無題）";
+  sentenceColl.set(row.id, cname);
   if (!collectionStats.has(cname)) {
-    collectionStats.set(cname, { register: regId, sentences: 0, tokens: 0, types: new Set() });
+    collectionStats.set(cname, { register: regId, sentences: 0, words: 0, types: new Set(), lenSum: 0, lenN: 0 });
   }
   collectionStats.get(cname).sentences++;
 }
@@ -152,8 +159,15 @@ const collPage = db.query(`
 for (const row of collPage.all()) {
   const c = collectionStats.get(row.coll || "（無題）");
   if (!c) continue;
-  c.tokens += row.n;
+  c.words += row.n;
   c.types.add(row.fold);
+}
+// sentence lengths per collection, on the same latn+kana basis as the registers
+for (const [sid, len] of sentenceLen) {
+  const c = collectionStats.get(sentenceColl.get(sid));
+  if (!c) continue;
+  c.lenSum += len;
+  c.lenN++;
 }
 
 // ---- sentence-length histograms per register ------------------------------
@@ -331,8 +345,9 @@ const collectionsOut = [...collectionStats.entries()]
     register: c.register,
     dialect: collectionDialect.get(name) ?? null,
     sentences: c.sentences,
-    tokens: c.tokens,
+    words: c.words,
     types: c.types.size,
+    meanLength: c.lenN ? Math.round((c.lenSum / c.lenN) * 10) / 10 : 0,
   }))
   .sort((a, b) => b.sentences - a.sentences);
 
@@ -363,6 +378,7 @@ const stats = {
   samples,
 };
 
-writeFileSync(OUT, JSON.stringify(stats));
-const kb = Math.round(Buffer.byteLength(JSON.stringify(stats)) / 1024);
+const payload = JSON.stringify(stats);
+writeFileSync(OUT, payload);
+const kb = Math.round(Buffer.byteLength(payload) / 1024);
 console.log(`wrote ${OUT} (${kb} KB): ${words.size} types, ${bigrams.size} bigrams, ${trigrams.size} trigrams`);

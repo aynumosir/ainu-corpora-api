@@ -56,7 +56,13 @@ describe("stats.json", () => {
     expect(stats.collections.reduce((s: number, c: { sentences: number }) => s + c.sentences, 0)).toBe(
       stats.totals.sentences,
     );
-    for (const c of stats.collections) expect(REG_IDS, c.name).toContain(c.register);
+    expect(stats.collections.reduce((s: number, c: { words: number }) => s + c.words, 0)).toBe(
+      stats.totals.words,
+    );
+    for (const c of stats.collections) {
+      expect(REG_IDS, c.name).toContain(c.register);
+      expect(c.meanLength, c.name).toBeGreaterThanOrEqual(0);
+    }
   });
 
   test("samples quote real focus words from their own text", () => {

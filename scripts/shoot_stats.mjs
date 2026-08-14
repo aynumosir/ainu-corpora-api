@@ -8,6 +8,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
 
 const ROOT = new URL("../public/", import.meta.url).pathname;
 mkdirSync(new URL("../build/", import.meta.url).pathname, { recursive: true });
@@ -15,15 +16,18 @@ mkdirSync(new URL("../build/", import.meta.url).pathname, { recursive: true });
 const TYPES = { html: "text/html", json: "application/json" };
 const server = Bun.serve({
   port: 0,
+  hostname: "127.0.0.1",
   fetch(req) {
     const url = new URL(req.url);
     let p = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
     if (!p.includes(".")) p += ".html";
+    const file = resolve(ROOT, p);
+    if (!file.startsWith(resolve(ROOT))) return new Response("forbidden", { status: 403 });
     const ext = p.split(".").pop();
-    return new Response(Bun.file(ROOT + p), { headers: { "content-type": TYPES[ext] ?? "text/plain" } });
+    return new Response(Bun.file(file), { headers: { "content-type": TYPES[ext] ?? "text/plain" } });
   },
 });
-const base = `http://localhost:${server.port}`;
+const base = `http://127.0.0.1:${server.port}`;
 const browser = await chromium.launch();
 
 async function shoot(name, scheme, { width = 1240, height = 940, section = null, fullPage = false, fn = null } = {}) {

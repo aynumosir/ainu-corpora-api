@@ -414,8 +414,9 @@
   <h2><span class="no">07</span>Collections</h2>
   <p class="lede">Every source in the corpus, one row each — the receipts for everything above.</p>
   <div class="tablewrap"><table class="data" id="colltable"></table></div>
-  <p class="footnote">Mean length is word tokens per sentence. Dialect shows the collection's
-  most frequent attribution. Click a register chip to pin.</p>
+  <p class="footnote">Words counts Latin-script tokens; mean length counts Latin and kana word
+  tokens per sentence, as in the fingerprints above. Dialect shows the collection's most
+  frequent attribution. Click a register chip to pin.</p>
 </section>
 
 <section id="methods" class="reveal" hidden>
@@ -516,6 +517,12 @@ function setPin(r) {
 }
 $("#pinchip").addEventListener("click", () => setPin(null));
 const togglePin = (r) => setPin(pin === r ? null : r);
+const onActivate = (el, run) => {
+  el.addEventListener("click", run);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); run(); }
+  });
+};
 
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
@@ -552,7 +559,6 @@ function renderHero() {
   $("#snapshot").textContent = "snapshot " + D.generated;
   const t = D.totals;
   const vals = [t.tokens, t.sentences, t.types, t.collections];
-  document.querySelectorAll("#hero, #overview").forEach(() => {});
   document.querySelectorAll("#overview .stat .v").forEach((el, i) => { el.dataset.n = vals[i]; });
   $("#c-hapax").textContent = fmt(t.hapax) + " of them occur exactly once";
   const io = new IntersectionObserver((es) => {
@@ -630,12 +636,12 @@ function renderStrip() {
   const total = D.totals.words;
   const strip = $("#strip");
   const labels = $(".striplabels");
-  let acc = 0, small = 0, smallAcc0 = null;
+  let acc = 0, small = 0, smallCount = 0;
   strip.innerHTML = REG_ORDER.map((r) => {
     const g = D.registers[r];
     const share = g.words / total;
     const seg = `<div class="seg" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}'
-      tabindex="0" role="img" aria-label="${esc(g.label)}: ${pct(share)} of words"
+      tabindex="0" role="button" aria-label="${esc(g.label)}: ${pct(share)} of words"
       style="flex:${g.words} 0 0; background:${REG_COLOR[r]}">` +
       (share >= 0.07 ? `<span class="il">${esc(g.label)} · ${pct(share)}</span>` : "") + `</div>`;
     return seg;
@@ -649,21 +655,18 @@ function renderStrip() {
     const mid = acc + share / 2;
     acc += share;
     if (share >= 0.07) return "";
-    if (share < 0.015) { if (smallAcc0 === null) smallAcc0 = mid; small += share; return ""; }
+    if (share < 0.015) { smallCount++; small += share; return ""; }
     const row = li++ % 2 === 0 ? "rowa" : "rowb";
     return `<span class="${row}" style="left:${(100 * mid).toFixed(2)}%">${esc(SHORT[r] ?? g.label)}<i></i></span>`;
   }).join("") + (small > 0
-    ? `<span class="${li % 2 === 0 ? "rowa" : "rowb"}" style="left:${(100 * (acc - small / 2)).toFixed(2)}%; transform:translateX(-78%)">2 more<i style="margin-right:6px"></i></span>`
+    ? `<span class="${li % 2 === 0 ? "rowa" : "rowb"}" style="left:${(100 * (acc - small / 2)).toFixed(2)}%; transform:translateX(-78%)">${smallCount} more<i style="margin-right:6px"></i></span>`
     : "");
-  strip.querySelectorAll(".seg").forEach((el) => {
-    el.addEventListener("click", () => togglePin(el.dataset.reg));
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter") togglePin(el.dataset.reg); });
-  });
+  strip.querySelectorAll(".seg").forEach((el) => onActivate(el, () => togglePin(el.dataset.reg)));
 }
 function renderRegBars() {
   const rows = [...REG_ORDER].sort((a, b) => D.registers[b][regMetric] - D.registers[a][regMetric]);
-  const max = D.registers[rows[0]][regMetric];
-  const total = REG_ORDER.reduce((s, r) => s + D.registers[r][regMetric], 0);
+  const max = D.registers[rows[0]][regMetric] || 1;
+  const total = REG_ORDER.reduce((s, r) => s + D.registers[r][regMetric], 0) || 1;
   $("#regbars").innerHTML = rows.map((r) => {
     const g = D.registers[r];
     const v = g[regMetric];
@@ -671,14 +674,14 @@ function renderRegBars() {
     const inBar = w > 55;
     const share = regMetric === "types" ? "" : " · " + pct(v / total);
     const valPos = inBar ? `left:calc(${w.toFixed(2)}% - 8px)` : `left:calc(${w.toFixed(2)}% + 8px)`;
-    return `<div class="brow" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}' tabindex="0">
+    return `<div class="brow" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}' tabindex="0" role="button">
       <span class="lab"><span class="rdot" style="background:${REG_COLOR[r]}"></span>
         <span>${esc(g.label)} <span class="rja">${esc(g.ja)}</span></span></span>
       <span class="track"><span class="fill" style="width:${w.toFixed(2)}%; background:${REG_COLOR[r]}"></span>
         <span class="val${inBar ? " in" : ""}" style="${valPos}">${fmt(v)}${share}</span></span></div>`;
   }).join("");
   $("#regbars").querySelectorAll(".brow").forEach((el) =>
-    el.addEventListener("click", () => togglePin(el.dataset.reg)));
+    onActivate(el, () => togglePin(el.dataset.reg)));
   if (pin) document.querySelectorAll("#regbars [data-reg]").forEach((el) =>
     el.classList.toggle("pinned", el.dataset.reg === pin));
   $("#regtable").innerHTML = `<table><tr><th>Register</th><th class="num">Sentences</th>
@@ -796,7 +799,7 @@ function renderHists() {
     const t = bins.reduce((a, b) => a + b, 0);
     return { r, bins, t };
   });
-  const ymax = Math.max(...perReg.flatMap(({ bins, t }) => bins.map((b) => b / t)));
+  const ymax = Math.max(...perReg.flatMap(({ bins, t }) => (t ? bins.map((b) => b / t) : [0]))) || 1;
   const W2 = 260, H2 = 110, BOT = 16;
   const bw = W2 / 16;
   $("#histgrid").innerHTML = perReg.map(({ r, bins, t }) => {
@@ -807,25 +810,25 @@ function renderHists() {
       svg += `<rect x="${(i * bw + 1).toFixed(1)}" y="${(H2 - BOT - h).toFixed(1)}" width="${bw - 2}" height="${h.toFixed(1)}" fill="var(--muted)" opacity=".22"/>`;
     });
     bins.forEach((b, i) => {
-      const h = ((b / t) / ymax) * (H2 - BOT);
+      const h = ((b / (t || 1)) / ymax) * (H2 - BOT);
       const lo = i * 2 + 1, hi = i < 15 ? i * 2 + 2 : "";
       const label = i < 15 ? `${lo}–${hi}` : "31+";
       svg += `<rect x="${(i * bw + 1).toFixed(1)}" y="${(H2 - BOT - h).toFixed(1)}" width="${bw - 2}" height="${h.toFixed(1)}" rx="1.5"
-        fill="${REG_COLOR[r]}" data-tip="<b>${label} tokens</b><br>${pct(b / t)} of ${esc(g.label).toLowerCase()} sentences<br><span class=m>corpus: ${pct(corpus[i] / cTotal)}</span>"/>`;
+        fill="${REG_COLOR[r]}" data-tip="<b>${label} tokens</b><br>${pct(b / (t || 1))} of ${esc(g.label).toLowerCase()} sentences<br><span class=m>corpus: ${pct(corpus[i] / cTotal)}</span>"/>`;
     });
     const mx = Math.min(g.meanLength, 31) / 31 * W2;
     const flip = mx > W2 * 0.7;
     svg += `<line x1="${mx}" x2="${mx}" y1="${H2 - BOT}" y2="${H2 - BOT + 5}" stroke="var(--ink)" stroke-width="1.5"/>` +
       `<text x="${flip ? mx - 4 : mx + 4}" y="${H2 - 2}"${flip ? ' text-anchor="end"' : ""}>mean ${g.meanLength}</text>` +
       `<text x="0" y="${H2 - 2}">1</text><text x="${W2 - 2}" y="${H2 - 2}" text-anchor="end">31+</text>`;
-    return `<div class="histpanel" data-reg="${r}" tabindex="0" role="img"
+    return `<div class="histpanel" data-reg="${r}" tabindex="0" role="button"
       aria-label="${esc(g.label)}: sentence-length distribution, mean ${g.meanLength} tokens">
       <div class="hd"><span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(g.label)}</div>
       <div class="n">${fmt(g.sentences)} sentences · median ${g.medianLength}</div>
       <svg viewBox="0 0 ${W2} ${H2}">${svg}</svg></div>`;
   }).join("");
   $("#histgrid").querySelectorAll(".histpanel").forEach((el) =>
-    el.addEventListener("click", () => togglePin(el.dataset.reg)));
+    onActivate(el, () => togglePin(el.dataset.reg)));
 }
 
 // ── register chips (shared by 04b + 05) ────────────────────────────────────
@@ -951,7 +954,7 @@ function renderHeatmap() {
   if (hmSort) rows.sort((a, b) => share(b, hmSort) - share(a, hmSort));
   $("#hm").innerHTML = `<table class="hm"><tr class="hd"><th>register</th>` +
     cols.map((t) => `<th data-t="${t}" aria-sort="${hmSort === t ? "descending" : "none"}">${t}${hmSort === t ? " ↓" : ""}</th>`).join("") +
-    `</tr>` + rows.map((r) => `<tr data-reg="${r}"><td><span class="rl" data-r="${r}">
+    `</tr>` + rows.map((r) => `<tr data-reg="${r}"><td><span class="rl" data-r="${r}" tabindex="0" role="button">
       <span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(regLabel(r))}</span></td>` +
       cols.map((t) => {
         const v = share(r, t);
@@ -964,7 +967,7 @@ function renderHeatmap() {
   $("#hm").querySelectorAll("th[data-t]").forEach((th) =>
     th.addEventListener("click", () => { hmSort = hmSort === th.dataset.t ? null : th.dataset.t; renderHeatmap(); }));
   $("#hm").querySelectorAll(".rl").forEach((el) =>
-    el.addEventListener("click", () => togglePin(el.dataset.r)));
+    onActivate(el, () => togglePin(el.dataset.r)));
   if (pin) document.querySelectorAll("#hm tr[data-reg]").forEach((el) =>
     el.classList.toggle("pinned", el.dataset.reg === pin));
   $("#hmlegend").innerHTML = `share of tagged tokens: low ` +
@@ -977,11 +980,11 @@ function renderHeatmap() {
 }
 
 // ── 07 collections ─────────────────────────────────────────────────────────
-let collSort = { k: "tokens", dir: -1 };
+let collSort = { k: "words", dir: -1 };
 function renderCollections() {
   const cols = [["name", "Collection"], ["register", "Register"], ["dialect", "Dialect"],
-    ["sentences", "Sentences"], ["tokens", "Words"], ["types", "Forms"], ["mean", "Mean len"]];
-  const items = D.collections.map((c) => ({ ...c, mean: c.sentences ? c.tokens / c.sentences : 0 }));
+    ["sentences", "Sentences"], ["words", "Words"], ["types", "Forms"], ["meanLength", "Mean len"]];
+  const items = D.collections.map((c) => ({ ...c }));
   items.sort((a, b) => {
     const { k, dir } = collSort;
     const av = a[k] ?? "", bv = b[k] ?? "";
@@ -996,8 +999,8 @@ function renderCollections() {
       <td lang="ja">${esc(c.name)}</td>
       <td><span class="regcell" data-r="${esc(c.register)}"><span class="rdot" style="background:${REG_COLOR[c.register]}"></span>${esc(regLabel(c.register))}</span></td>
       <td>${c.dialect ? `<span lang="ja">${esc(c.dialect)}</span> <span style="color:var(--muted)">${esc(rom)}</span>` : "—"}</td>
-      <td class="num">${fmt(c.sentences)}</td><td class="num">${fmt(c.tokens)}</td>
-      <td class="num">${fmt(c.types)}</td><td class="num">${c.mean.toFixed(1)}</td></tr>`;
+      <td class="num">${fmt(c.sentences)}</td><td class="num">${fmt(c.words)}</td>
+      <td class="num">${fmt(c.types)}</td><td class="num">${c.meanLength.toFixed(1)}</td></tr>`;
     }).join("") + "</tbody>";
   $("#colltable thead").addEventListener("click", (e) => {
     const th = e.target.closest("th[data-k]"); if (!th) return;
