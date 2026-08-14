@@ -24,6 +24,10 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); line-height: 1.5; }
   header { padding: 16px 22px 12px; border-bottom: 1px solid var(--line); }
+  header .wrap { display: flex; align-items: baseline; }
+  header nav { margin-left: auto; font-size: 13px; }
+  header nav a { color: var(--link); text-decoration: none; }
+  header nav a:hover { text-decoration: underline; }
   h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: .2px; }
   h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
   .wrap { max-width: 1240px; margin: 0 auto; padding: 0 22px; }
@@ -145,9 +149,9 @@
 </style>
 </head>
 <body>
-<header><div class="wrap" style="display:flex; align-items:baseline;">
+<header><div class="wrap">
   <h1>aynu kampisos hunara <small>Ainu corpus search</small></h1>
-  <nav style="margin-left:auto; font-size:13px;"><a href="/stats" style="color:var(--link); text-decoration:none;">statistics</a></nav>
+  <nav><a href="/stats">statistics</a></nav>
 </div></header>
 
 <div class="wrap">

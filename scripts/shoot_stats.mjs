@@ -9,10 +9,12 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("../public/", import.meta.url).pathname;
-const root = resolve(ROOT);
-mkdirSync(new URL("../build/", import.meta.url).pathname, { recursive: true });
+const root = resolve(fileURLToPath(new URL("../public/", import.meta.url)));
+const BUILD = fileURLToPath(new URL("../build/", import.meta.url));
+mkdirSync(BUILD, { recursive: true });
+let sawPageError = false;
 
 const TYPES = { html: "text/html", json: "application/json" };
 const server = Bun.serve({
@@ -39,40 +41,43 @@ async function shoot(name, scheme, { width = 1240, height = 940, section = null,
     reducedMotion: "reduce",
   });
   const page = await ctx.newPage();
-  page.on("console", (m) => { if (m.type() === "error") console.log(`[${name}] console error:`, m.text()); });
-  page.on("pageerror", (e) => console.log(`[${name}] page error:`, e.message));
+  page.on("console", (m) => { if (m.type() === "error") { sawPageError = true; console.log(`[${name}] console error:`, m.text()); } });
+  page.on("pageerror", (e) => { sawPageError = true; console.log(`[${name}] page error:`, e.message); });
   await page.goto(base + "/stats", { waitUntil: "networkidle" });
   if (section) await page.locator(section).scrollIntoViewIfNeeded();
   if (fn) await fn(page);
   await page.waitForTimeout(500);
-  await page.screenshot({ path: new URL(`../build/${name}.png`, import.meta.url).pathname, fullPage });
+  await page.screenshot({ path: `${BUILD}${name}.png`, fullPage });
   console.log(name, "ok");
   await ctx.close();
 }
 
-await shoot("stats-hero", "light");
-await shoot("stats-hero-dark", "dark");
-await shoot("stats-registers", "light", { section: "#registers" });
-await shoot("stats-registers-dark", "dark", { section: "#registers" });
-await shoot("stats-dialects", "light", { section: "#dialects" });
-await shoot("stats-lexicon", "light", { section: "#lexicon" });
-await shoot("stats-lexicon-dark", "dark", { section: "#lexicon" });
-await shoot("stats-fingerprints", "light", { section: "#histgrid" });
-await shoot("stats-fingerprints-dark", "dark", { section: "#histgrid" });
-await shoot("stats-phrases", "light", { section: "#chips-phrases" });
-await shoot("stats-keywords", "light", { section: "#keywords" });
-await shoot("stats-keywords-dark", "dark", { section: "#keywords" });
-await shoot("stats-grammar", "light", { section: "#grammar" });
-await shoot("stats-grammar-dark", "dark", { section: "#grammar" });
-await shoot("stats-collections", "light", { section: "#collections" });
-await shoot("stats-methods", "light", { section: "#methods" });
-// pinned state: pin social via a strip segment, then look at fingerprints
-await shoot("stats-pinned", "light", {
-  section: "#histgrid",
-  fn: async (p) => { await p.click('#strip .seg[data-reg="social"]'); },
-});
-await shoot("stats-mobile", "light", { width: 375, height: 800 });
-await shoot("stats-mobile-registers", "light", { width: 375, height: 800, section: "#registers" });
-
-await browser.close();
-server.stop();
+try {
+  await shoot("stats-hero", "light");
+  await shoot("stats-hero-dark", "dark");
+  await shoot("stats-registers", "light", { section: "#registers" });
+  await shoot("stats-registers-dark", "dark", { section: "#registers" });
+  await shoot("stats-dialects", "light", { section: "#dialects" });
+  await shoot("stats-lexicon", "light", { section: "#lexicon" });
+  await shoot("stats-lexicon-dark", "dark", { section: "#lexicon" });
+  await shoot("stats-fingerprints", "light", { section: "#histgrid" });
+  await shoot("stats-fingerprints-dark", "dark", { section: "#histgrid" });
+  await shoot("stats-phrases", "light", { section: "#chips-phrases" });
+  await shoot("stats-keywords", "light", { section: "#keywords" });
+  await shoot("stats-keywords-dark", "dark", { section: "#keywords" });
+  await shoot("stats-grammar", "light", { section: "#grammar" });
+  await shoot("stats-grammar-dark", "dark", { section: "#grammar" });
+  await shoot("stats-collections", "light", { section: "#collections" });
+  await shoot("stats-methods", "light", { section: "#methods" });
+  // pinned state: pin social via a strip segment, then look at fingerprints
+  await shoot("stats-pinned", "light", {
+    section: "#histgrid",
+    fn: async (p) => { await p.click('#strip .seg[data-reg="social"]'); },
+  });
+  await shoot("stats-mobile", "light", { width: 375, height: 800 });
+  await shoot("stats-mobile-registers", "light", { width: 375, height: 800, section: "#registers" });
+} finally {
+  await browser.close();
+  server.stop();
+}
+if (sawPageError) process.exit(1);

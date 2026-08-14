@@ -7,9 +7,8 @@
 <style>
   :root {
     --bg: #fbfaf7; --panel: #ffffff; --ink: #1c1a17; --muted: #6b645a;
-    --line: #e7e2d8; --accent: #b4532a; --accent-soft: #f3e2d8;
-    --node-bg: #fde9b8; --node-ink: #5a3a00; --link: #9c4a23;
-    --chip: #f0ece2; --pos: #2f6f6a; --pos-bg: #e3efed; --bar: #d9b48f;
+    --line: #e7e2d8; --accent: #b4532a; --link: #9c4a23;
+    --chip: #f0ece2; --bar: #d9b48f;
     --mono: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
     --ui: system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
     /* register palette — categorical, fixed order, CVD-validated on both surfaces */
@@ -21,9 +20,8 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #16140f; --panel: #1f1c16; --ink: #ece7dd; --muted: #9a9285;
-      --line: #322d24; --accent: #e08a5b; --accent-soft: #2c211a;
-      --node-bg: #4a3a18; --node-ink: #ffe6a8; --link: #e6a072;
-      --chip: #2a261e; --pos: #8fd0c8; --pos-bg: #1d2a28; --bar: #6b4f30;
+      --line: #322d24; --accent: #e08a5b; --link: #e6a072;
+      --chip: #2a261e; --bar: #6b4f30;
       --reg-oral: #cf6f3d; --reg-scripture: #1f9e8e; --reg-press: #5b8fe3;
       --reg-social: #c2607f; --reg-pedagogy: #bd8524; --reg-dictionary: #8f7ade;
       --reg-conversation: #86a03f; --reg-other: #98917f;
@@ -58,8 +56,10 @@
   #pinchip .x { color: var(--muted); font-weight: 700; }
   body[data-pin] #pinchip { display: inline-flex; }
 
-  main section { margin-top: 68px; }
+  main section { margin-top: 68px; scroll-margin-top: 56px; }
   main section:first-child { margin-top: 34px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #strip .seg:focus-visible { outline-offset: -3px; }
   h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; letter-spacing: .04em;
     font-variant-caps: all-small-caps; }
   h2 .no { font-family: var(--mono); color: var(--muted); font-weight: 400; margin-right: 8px;
@@ -91,8 +91,8 @@
   #speaks .nav button { background: none; border: 0; color: var(--muted); font-size: 16px;
     cursor: pointer; padding: 8px 12px; border-radius: 8px; }
   #speaks .nav button:hover { background: var(--chip); color: var(--ink); }
-  #speaks .dots { display: inline-flex; gap: 5px; margin: 0 4px; }
-  #speaks .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+  #speaks .dots { display: inline-flex; gap: 6px; margin: 0 4px; align-items: center; }
+  #speaks .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); cursor: pointer; }
   #speaks .dots i.on { background: var(--muted); }
   #speaks .sent { font-family: var(--mono); font-size: 15.5px; line-height: 1.7; margin: 10px 0 2px;
     transition: opacity .25s; }
@@ -119,7 +119,7 @@
   .striplabels span i { display: block; width: 1px; height: 7px; background: var(--line);
     margin: 1px auto 0; }
   @media (max-width: 899px) { .striplabels { display: none; } .stripwrap { padding-top: 0; } }
-  body[data-pin] #strip .seg { opacity: .45; }
+  body[data-pin] #strip .seg { opacity: .7; }
   body[data-pin] #strip .seg.pinned { opacity: 1; outline: 2px solid var(--ink); outline-offset: 1px; }
 
   /* bar lists */
@@ -134,7 +134,7 @@
     cursor: pointer; }
   .brow .lab { font-size: 13px; display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .brow .lab .rdot { margin-top: 5px; }
-  .brow .lab .rja { font-size: 11px; }
+  .brow .lab span > .rja { display: block; font-size: 11px; line-height: 1.3; }
   .brow .track { position: relative; height: 22px; align-self: start; margin-top: 1px; }
   .brow .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 3px 3px 0; }
   .brow .val { position: absolute; top: 50%; transform: translateY(-50%);
@@ -142,7 +142,7 @@
   .brow .val.in { transform: translate(-100%, -50%); color: var(--seg-label); }
   .brow .note { font-size: 12px; color: var(--muted); }
   @media (max-width: 899px) { .brow .note { display: none; } }
-  body[data-pin] .brow { opacity: .5; }
+  body[data-pin] .brow { opacity: .72; }
   body[data-pin] .brow.pinned { opacity: 1; }
   .brow.pinned .lab { font-weight: 600; }
   .scrollx { overflow-x: auto; }
@@ -181,7 +181,7 @@
   .histpanel .n { color: var(--muted); font-size: 11px; font-weight: 400; margin: 1px 0 6px 16px; }
   .histpanel svg { width: 100%; height: auto; display: block; }
   .histpanel text { font-family: var(--mono); font-size: 9.5px; fill: var(--muted); }
-  body[data-pin] .histpanel { opacity: .55; }
+  body[data-pin] .histpanel { opacity: .72; }
   body[data-pin] .histpanel.pinned { opacity: 1; outline: 2px solid var(--ink); outline-offset: -1px; }
 
   /* register chips (04b / 05) */
@@ -219,11 +219,11 @@
   table.hm th:first-child { text-align: left; cursor: default; }
   table.hm td { text-align: right; padding: 0; }
   table.hm td .cell { display: block; padding: 8px; font-family: var(--mono); font-size: 11.5px;
-    border: 1px solid var(--bg); }
-  table.hm td.s3 .cell, table.hm td.s4 .cell { color: var(--seg-label); }
+    border: 1px solid var(--bg); background: var(--chip); }
+  table.hm td.s4 .cell { color: var(--seg-label); }
   table.hm .rl { display: flex; align-items: center; gap: 7px; font-size: 12.5px; white-space: nowrap;
     padding: 6px 10px 6px 0; cursor: pointer; }
-  body[data-pin] table.hm tr { opacity: .55; }
+  body[data-pin] table.hm tr { opacity: .75; }
   body[data-pin] table.hm tr.pinned, body[data-pin] table.hm tr.hd { opacity: 1; }
   .hmlegend { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted);
     margin-top: 8px; }
@@ -240,7 +240,7 @@
   table.data td { background: var(--panel); }
   .regcell { display: inline-flex; align-items: center; gap: 6px; background: var(--chip);
     border-radius: 999px; padding: 1px 9px; font-size: 11.5px; white-space: nowrap; cursor: pointer; }
-  body[data-pin] table.data tbody tr { opacity: .55; }
+  body[data-pin] table.data tbody tr { opacity: .75; }
   body[data-pin] table.data tbody tr.pinned { opacity: 1; }
   table.data tbody tr.pinned td:first-child { box-shadow: inset 3px 0 0 var(--pincolor, var(--accent)); }
 
@@ -285,7 +285,7 @@
   <nav><a href="/">search →</a></nav>
 </div></header>
 
-<div id="subnav"><div class="wrap">
+<nav id="subnav" aria-label="Sections"><div class="wrap">
   <a href="#overview" class="on">Overview</a>
   <a href="#registers">Registers</a>
   <a href="#dialects">Dialects</a>
@@ -295,7 +295,7 @@
   <a href="#grammar">Grammar mix</a>
   <a href="#collections">Collections</a>
   <button id="pinchip" type="button" title="Unpin"><span class="dot"></span><span class="pl"></span><span class="x">×</span></button>
-</div></div>
+</div></nav>
 
 <main class="wrap">
 
@@ -303,19 +303,19 @@
   <div class="kicker"><span>Corpus statistics · 統計</span><span id="snapshot"></span></div>
   <div class="grid">
     <div class="stat"><div class="v" data-n="1763691">1,763,691</div><div class="l">tokens</div>
-      <div class="c">every word and mark, across two script layers</div></div>
+      <div class="c">every word and mark in the corpus</div></div>
     <div class="stat"><div class="v" data-n="209790">209,790</div><div class="l">sentences</div>
       <div class="c">oral narratives, print, and social media</div></div>
     <div class="stat"><div class="v" data-n="48682">48,682</div><div class="l">word forms</div>
       <div class="c" id="c-hapax">26,920 of them occur exactly once</div></div>
-    <div class="stat"><div class="v" data-n="44">44</div><div class="l">collections</div>
+    <div class="stat"><div class="v" data-n="49">49</div><div class="l">collections</div>
       <div class="c">grouped into 8 registers below</div></div>
   </div>
   <div id="speaks" hidden>
     <div class="top">
-      <span class="rdot"></span><span class="rlabel"></span><span class="rja"></span>
+      <span class="rdot"></span><span class="rlabel"></span><span class="rja" lang="ja"></span>
       <span class="coll"></span>
-      <span class="nav"><button type="button" data-d="-1" aria-label="Previous sentence">‹</button><span class="dots"></span><button type="button" data-d="1" aria-label="Next sentence">›</button></span>
+      <span class="nav"><button type="button" id="sp-pause" aria-label="Pause rotation" aria-pressed="false">⏸</button><button type="button" data-d="-1" aria-label="Previous sentence">‹</button><span class="dots"></span><button type="button" data-d="1" aria-label="Next sentence">›</button></span>
     </div>
     <div class="sent" lang="ain"></div>
     <div class="tr" lang="ja"></div>
@@ -327,10 +327,11 @@
 <div id="loaderr"><div>Statistics data could not be loaded (stats.json).</div><button type="button" onclick="boot()">Retry</button></div>
 
 <section id="registers" class="reveal" hidden>
-  <h2><span class="no">01</span>Registers</h2>
-  <p class="lede">Seven in ten sentences are oral literature — uwepeker, kamuy yukar and other
-  narratives recorded from the last generations of native speakers. The modern registers are
-  small beside that, and they are where Ainu is being written today.</p>
+  <h2><span class="no" aria-hidden="true">01</span>Registers</h2>
+  <p class="lede">Three in five words in the corpus come from oral literature — uwepeker,
+  kamuy yukar and other narratives recorded from the last generations of native speakers. The
+  modern registers are small beside that; social media and the Ainu Times are where new Ainu
+  prose appears.</p>
   <div class="stripwrap"><div class="striplabels"></div><div id="strip"></div></div>
   <p class="footnote">Share of word tokens. Click a segment to pin a register across the whole page.</p>
   <div class="seg-ctl" id="regmetric" role="group" aria-label="Metric">
@@ -339,12 +340,14 @@
     <button type="button" data-m="types" aria-pressed="false">Word forms</button>
   </div>
   <div class="scrollx"><div class="rows" id="regbars"></div></div>
+  <p class="footnote">Distinct word-form counts grow with a register's size; that view is a
+  size signal more than a richness signal.</p>
   <details class="tview"><summary>View as table</summary><div id="regtable"></div></details>
 </section>
 
 <section id="dialects" class="reveal" hidden>
-  <h2><span class="no">02</span>Dialects</h2>
-  <p class="lede">Two Hokkaidō varieties — Saru and Shizunai — supply well over half of the
+  <h2><span class="no" aria-hidden="true">02</span>Dialects</h2>
+  <p class="lede">Two Hokkaidō varieties — Saru and Shizunai — supply more than half of the
   corpus. The Sakhalin record is thin but present, from Asai Take's folktales to Piłsudski-era
   letters.</p>
   <div class="scrollx"><div id="dialbars"></div></div>
@@ -353,7 +356,7 @@
 </section>
 
 <section id="lexicon" class="reveal" hidden>
-  <h2><span class="no">03</span>The lexicon</h2>
+  <h2><span class="no" aria-hidden="true">03</span>The lexicon</h2>
   <p class="lede" id="lexlede"></p>
   <div id="lexgrid">
     <div>
@@ -362,30 +365,32 @@
     </div>
     <div class="callouts" id="callouts"></div>
   </div>
-  <p class="footnote">Forms are counted as written: clitics keep their <code>=</code>
-  (<span class="w">a=</span>, <span class="w">=an</span>), and spelling variants folded only for
-  accent marks. The curve stops at rank 1,000.</p>
+  <p class="footnote">Clitics keep their <code>=</code>
+  (<span class="w">a=</span>, <span class="w">=an</span>); spelling variants are folded for
+  accent marks and apostrophe-written glottal stops, and each form is shown in its commonest
+  spelling. The curve stops at rank 1,000.</p>
 </section>
 
 <section id="fingerprints" class="reveal" hidden>
-  <h2><span class="no">04</span>Fingerprints</h2>
-  <p class="lede">A sentence of oral epic and a sentence of Twitter Ainu feel different long
-  before you can say why. Sentence rhythm is the first measurable reason; favourite phrases are
-  the second.</p>
+  <h2><span class="no" aria-hidden="true">04</span>Fingerprints</h2>
+  <p class="lede">Sentence rhythm is the first measurable difference between the registers;
+  recurring phrases are the second.</p>
   <div id="histgrid"></div>
   <p class="footnote">Each panel: share of the register's sentences by length in word tokens,
   bins of two; the gray silhouette behind every panel is the whole corpus, so shapes compare
-  directly. The tick marks the register's mean. Click a panel to pin.</p>
+  directly. The tick marks the register's mean. Length also reflects how each source was
+  segmented — Bible verses, breath-group transcriptions and dictionary examples cut sentences
+  differently. Click a panel to pin.</p>
   <h3 style="margin:26px 0 0; font-size:14px;">Signature phrases</h3>
   <div class="regchips" id="chips-phrases" role="group" aria-label="Register"></div>
   <div class="phrasegrid" id="phrases"></div>
   <p class="footnote">The register's most frequent word sequences (raw counts over consecutive
-  tokens). For the words that distinguish it from the rest of the corpus, see
-  <a href="#keywords">signature words</a>.</p>
+  tokens, accent-insensitive) — comparable within a register only. For the words that
+  distinguish it from the rest of the corpus, see <a href="#keywords">signature words</a>.</p>
 </section>
 
 <section id="keywords" class="reveal" hidden>
-  <h2><span class="no">05</span>Signature words</h2>
+  <h2><span class="no" aria-hidden="true">05</span>Signature words</h2>
   <p class="lede">Keyness scores every word by how much more often one register uses it than
   the rest of the corpus does. High scorers are the register's own vocabulary: what it keeps
   reaching for.</p>
@@ -402,7 +407,7 @@
 </section>
 
 <section id="grammar" class="reveal" hidden>
-  <h2><span class="no">06</span>Grammar mix</h2>
+  <h2><span class="no" aria-hidden="true">06</span>Grammar mix</h2>
   <p class="lede" id="poslede"></p>
   <div class="hmwrap" id="hm"></div>
   <div class="hmlegend" id="hmlegend"></div>
@@ -411,8 +416,9 @@
 </section>
 
 <section id="collections" class="reveal" hidden>
-  <h2><span class="no">07</span>Collections</h2>
-  <p class="lede">Every source in the corpus, one row each — the receipts for everything above.</p>
+  <h2><span class="no" aria-hidden="true">07</span>Collections</h2>
+  <p class="lede">Every source in the corpus, one row each, with the counts behind every chart
+  above.</p>
   <div class="tablewrap"><table class="data" id="colltable"></table></div>
   <p class="footnote">Words counts Latin-script tokens; mean length counts Latin and kana word
   tokens per sentence, as in the fingerprints above. Dialect shows the collection's most
@@ -422,25 +428,26 @@
 <section id="methods" class="reveal" hidden>
   <h3 style="margin:0; font-size:13px;">Methods &amp; data</h3>
   <ul>
-    <li>Every sentence inherits the register of its source collection; the
-      <a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/data/collection_registers.json">collection→register table</a>
-      is part of this repository.</li>
-    <li>Word-level statistics count Latin-script tokens; forms are compared accent-insensitively
-      and displayed in their commonest spelling.</li>
+    <li>Every sentence inherits the register of its source collection
+      (<a href="https://github.com/aynumosir/ainu-corpora-api/blob/main/data/collection_registers.json">collection→register table</a>).</li>
+    <li>Word-level statistics count Latin-script tokens; forms are compared with accent marks
+      and apostrophe-written glottal stops folded, and displayed in their commonest spelling.</li>
     <li>Keyness: log-likelihood G² (Dunning 1993), each register against the rest of the corpus,
-      with rates per million tokens. Words need 20 corpus occurrences and 5 in the register to
-      qualify; single-letter tokens are excluded, since speaker labels and list markers dominate
-      them.</li>
+      with rates per million tokens. Words need 20 corpus occurrences, 5 in the register, and
+      G² ≥ 10.8 (p &lt; 0.001) to qualify; single-letter and punctuation-bearing tokens are
+      excluded, since speaker labels and list markers dominate them.</li>
+    <li>News, social media and the Bible translation are single-collection registers, so their
+      keywords are also those collections' keywords.</li>
     <li>Function words are flagged from the tagger: closed-class UD tags and clitics.</li>
     <li>N-grams follow the token layer: consecutive tokens inside one sentence, clitics counted
-      as tokens.</li>
+      as tokens, accent-insensitive.</li>
     <li>Sentence length counts word tokens (Latin and kana script); histogram bins of two,
-      overflow at 31+.</li>
+      overflow at 31+. Sentences with no word token stay outside the histograms.</li>
     <li>POS tags: Universal Dependencies, machine-tagged; <span id="m-tagged"></span> of tokens
       carry a tag.</li>
     <li>Zipf series truncated at rank 1,000.</li>
     <li>Snapshot <span id="m-snapshot"></span> · data:
-      <a href="/stats.json">stats.json</a> · every chart is inline SVG/CSS drawn at load.</li>
+      <a href="/stats.json">stats.json</a>.</li>
   </ul>
 </section>
 
@@ -453,7 +460,7 @@
   <a href="/">corpus search</a>
 </div></footer>
 
-<div id="tip" role="status"></div>
+<div id="tip" aria-hidden="true"></div>
 
 <script>
 "use strict";
@@ -492,6 +499,7 @@ function showTip(html, x, y) {
 }
 function hideTip() { tip.style.display = "none"; }
 document.addEventListener("pointermove", (e) => {
+  if (e.target.id === "zhit") return; // the Zipf overlay drives its own tooltip
   const el = e.target.closest?.("[data-tip]");
   if (el) showTip(el.dataset.tip, e.clientX, e.clientY); else hideTip();
 });
@@ -506,9 +514,17 @@ addEventListener("scroll", hideTip, { passive: true });
 // ── pinning ────────────────────────────────────────────────────────────────
 function setPin(r) {
   pin = r;
-  if (r) { document.body.dataset.pin = r; localStorage.setItem("aynu-stats-pin", r); history.replaceState(null, "", "#pin=" + r); }
-  else { delete document.body.dataset.pin; localStorage.removeItem("aynu-stats-pin"); history.replaceState(null, "", location.pathname); }
-  document.querySelectorAll("[data-reg]").forEach((el) => el.classList.toggle("pinned", el.dataset.reg === r));
+  if (r) {
+    document.body.dataset.pin = r;
+    history.replaceState(null, "", "#pin=" + r);
+  } else {
+    delete document.body.dataset.pin;
+    if (/^#pin=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+  }
+  document.querySelectorAll("[data-reg]").forEach((el) => {
+    el.classList.toggle("pinned", el.dataset.reg === r);
+    if (el.getAttribute("role") === "button") el.setAttribute("aria-pressed", el.dataset.reg === r);
+  });
   if (r) {
     $("#pinchip .dot").style.background = REG_COLOR[r];
     $("#pinchip .pl").textContent = regLabel(r);
@@ -528,11 +544,14 @@ const onActivate = (el, run) => {
 async function boot() {
   $("#loaderr").style.display = "none";
   try {
-    D = await (await fetch("stats.json")).json();
+    D = await (await fetch("/stats.json")).json();
+    renderAll();
   } catch (e) {
+    console.error(e);
     $("#loaderr").style.display = "block";
-    return;
   }
+}
+function renderAll() {
   renderHero();
   renderSpeaks();
   renderStrip();
@@ -549,9 +568,10 @@ async function boot() {
   document.querySelectorAll("main section[hidden]").forEach((s) => (s.hidden = false));
   revealObserver();
   navObserver();
+  const missing = Object.keys(D.registers).filter((r) => !REG_ORDER.includes(r));
+  if (missing.length) console.warn("registers absent from REG_ORDER:", missing.join(", "));
   const h = location.hash.match(/#pin=(\w+)/);
-  const saved = h ? h[1] : localStorage.getItem("aynu-stats-pin");
-  if (saved && D.registers[saved]) setPin(saved);
+  if (h && D.registers[h[1]]) setPin(h[1]);
 }
 
 // ── hero ───────────────────────────────────────────────────────────────────
@@ -580,14 +600,26 @@ function renderHero() {
 }
 
 // ── the corpus speaks ──────────────────────────────────────────────────────
-let spI = 0, spTimer = null;
+let spI = 0, spTimer = null, spPaused = false;
 function renderSpeaks() {
   if (!D.samples?.length) return;
   const box = $("#speaks");
   box.hidden = false;
-  $("#speaks .dots").innerHTML = D.samples.map((_, i) => `<i data-i="${i}"></i>`).join("");
-  box.querySelectorAll(".nav button").forEach((b) =>
+  $("#speaks .dots").innerHTML = D.samples
+    .map((_, i) => `<i data-i="${i}" role="button" tabindex="0" aria-label="Sentence ${i + 1}"></i>`)
+    .join("");
+  box.querySelectorAll(".nav button[data-d]").forEach((b) =>
     b.addEventListener("click", () => { spGo(spI + +b.dataset.d); spHold(); }));
+  $("#sp-pause").addEventListener("click", () => {
+    spPaused = !spPaused;
+    const b = $("#sp-pause");
+    b.setAttribute("aria-pressed", spPaused);
+    b.setAttribute("aria-label", spPaused ? "Resume rotation" : "Pause rotation");
+    b.textContent = spPaused ? "▶" : "⏸";
+    if (spPaused) spStop(); else spStart();
+  });
+  box.querySelectorAll(".dots i").forEach((d) =>
+    onActivate(d, () => { spGo(+d.dataset.i); spHold(); }));
   box.addEventListener("pointerenter", spStop);
   box.addEventListener("pointerleave", spStart);
   box.addEventListener("focusin", spStop);
@@ -621,7 +653,7 @@ function spGo(i) {
   }
   document.querySelectorAll("#speaks .dots i").forEach((d, j) => d.classList.toggle("on", j === spI));
 }
-function spStart() { if (!REDUCED && !spTimer) spTimer = setInterval(() => spGo(spI + 1), 6000); }
+function spStart() { if (!REDUCED && !spPaused && !spTimer) spTimer = setInterval(() => spGo(spI + 1), 6000); }
 function spStop() { clearInterval(spTimer); spTimer = null; }
 function spHold() { spStop(); spStart(); }
 
@@ -676,7 +708,7 @@ function renderRegBars() {
     const valPos = inBar ? `left:calc(${w.toFixed(2)}% - 8px)` : `left:calc(${w.toFixed(2)}% + 8px)`;
     return `<div class="brow" data-reg="${r}" data-tip='${regTip(r).replace(/'/g, "&#39;")}' tabindex="0" role="button">
       <span class="lab"><span class="rdot" style="background:${REG_COLOR[r]}"></span>
-        <span>${esc(g.label)} <span class="rja">${esc(g.ja)}</span></span></span>
+        <span>${esc(g.label)} <span class="rja" lang="ja">${esc(g.ja)}</span></span></span>
       <span class="track"><span class="fill" style="width:${w.toFixed(2)}%; background:${REG_COLOR[r]}"></span>
         <span class="val${inBar ? " in" : ""}" style="${valPos}">${fmt(v)}${share}</span></span></div>`;
   }).join("");
@@ -752,6 +784,9 @@ function renderLexicon() {
   svg += `<line class="ideal" x1="${X(1)}" y1="${Y(z[0].n)}" x2="${X(z.length)}" y2="${Y(z[0].n / z.length)}"/>` +
     `<text x="${X(140)}" y="${Y(z[0].n / 140) - 16}">ideal Zipf slope (frequency ∝ 1/rank)</text>`;
   svg += `<polyline class="curve" points="${z.map((p, i) => X(i + 1).toFixed(1) + "," + Y(p.n).toFixed(1)).join(" ")}"/>`;
+  svg += `<circle id="zdot" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2" pointer-events="none" style="display:none"/>` +
+    `<rect id="zhit" x="${L}" y="${T}" width="${PW - L - R}" height="${PH - T - B}" fill="transparent"/>`;
+  // annotations sit above the hit overlay so their links stay clickable
   const ANN = 8, placed = [];
   for (let i = 0; i < ANN; i++) {
     const p = z[i];
@@ -760,10 +795,8 @@ function renderLexicon() {
     while (placed.some(([px, py]) => Math.abs(px - lx) < 48 && Math.abs(py - ly) < 14)) lx += 52;
     placed.push([lx, ly]);
     svg += `<line class="leader" x1="${X(i + 1) + 2}" y1="${Y(p.n) - 3}" x2="${lx - 2}" y2="${ly + 3}"/>` +
-      `<a href="${searchHref(p.w)}"><text class="ann" x="${lx}" y="${ly}">${esc(p.w)}</text></a>`;
+      `<a href="${searchHref(p.w)}"><text class="ann" lang="ain" x="${lx}" y="${ly}">${esc(p.w)}</text></a>`;
   }
-  svg += `<circle id="zdot" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2" style="display:none"/>` +
-    `<rect id="zhit" x="${L}" y="${T}" width="${PW - L - R}" height="${PH - T - B}" fill="transparent"/>`;
   $("#zipf").innerHTML = svg;
   const hit = $("#zhit"), dot = $("#zdot");
   const onmove = (e) => {
@@ -780,7 +813,7 @@ function renderLexicon() {
   hit.addEventListener("pointermove", onmove);
   hit.addEventListener("pointerleave", () => { dot.style.display = "none"; hideTip(); });
   $("#zipftable").innerHTML = `<table><tr><th class="num">Rank</th><th>Form</th><th class="num">Tokens</th><th class="num">Cumulative</th></tr>` +
-    z.slice(0, 50).map((p, i) => `<tr><td class="num">${i + 1}</td><td><a class="w" href="${searchHref(p.w)}">${esc(p.w)}</a></td>
+    z.slice(0, 50).map((p, i) => `<tr><td class="num">${i + 1}</td><td><a class="w" lang="ain" href="${searchHref(p.w)}">${esc(p.w)}</a></td>
       <td class="num">${fmt(p.n)}</td><td class="num">${pct(cum[i] / W)}</td></tr>`).join("") + "</table>";
 }
 
@@ -816,7 +849,7 @@ function renderHists() {
       svg += `<rect x="${(i * bw + 1).toFixed(1)}" y="${(H2 - BOT - h).toFixed(1)}" width="${bw - 2}" height="${h.toFixed(1)}" rx="1.5"
         fill="${REG_COLOR[r]}" data-tip="<b>${label} tokens</b><br>${pct(b / (t || 1))} of ${esc(g.label).toLowerCase()} sentences<br><span class=m>corpus: ${pct(corpus[i] / cTotal)}</span>"/>`;
     });
-    const mx = Math.min(g.meanLength, 31) / 31 * W2;
+    const mx = Math.min(((Math.min(g.meanLength, 31) - 1) / 2 + 0.5) * bw, W2 - 2);
     const flip = mx > W2 * 0.7;
     svg += `<line x1="${mx}" x2="${mx}" y1="${H2 - BOT}" y2="${H2 - BOT + 5}" stroke="var(--ink)" stroke-width="1.5"/>` +
       `<text x="${flip ? mx - 4 : mx + 4}" y="${H2 - 2}"${flip ? ' text-anchor="end"' : ""}>mean ${g.meanLength}</text>` +
@@ -842,7 +875,6 @@ function renderChips() {
     el.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
       keyReg = b.dataset.r;
-      setPin(keyReg);
       renderPhrases(); renderKeyness(); syncChips();
     });
   }
@@ -856,7 +888,7 @@ function syncChips() {
 function renderPhrases() {
   const g = D.registers[keyReg];
   const list = (items, empty) => items.length
-    ? items.slice(0, 10).map((p) => `<div class="phrase"><a class="w" href="${searchHref(p.g)}">${esc(p.g)}</a>
+    ? items.slice(0, 10).map((p) => `<div class="phrase"><a class="w" lang="ain" href="${searchHref(p.g)}">${esc(p.g)}</a>
         <span class="dots2"></span><span class="n">${fmt(p.n)}</span></div>`).join("")
     : `<div class="phrase" style="color:var(--muted)">${empty}</div>`;
   $("#phrases").innerHTML =
@@ -901,7 +933,7 @@ function renderKeyness() {
     svg += `<g tabindex="0" role="img" aria-label="${esc(k.w)}: ${fmt(k.pm)} per million here, ${fmt(k.pmRest)} in the rest"
         data-tip="<b>${esc(k.w)}</b><br>${fmt(k.pm)} per million in ${esc(regLabel(keyReg)).toLowerCase()}<br><span class=m>${fmt(k.pmRest)} per million elsewhere · G² ${fmt(Math.round(k.g2))}</span>">
       <rect x="0" y="${y - RH / 2}" width="${W3}" height="${RH}" fill="transparent"/>
-      <a href="${searchHref(k.w)}"><text class="w" x="${L2 - 10}" y="${y + 4}" text-anchor="end">${esc(k.w)}</text></a>
+      <a href="${searchHref(k.w)}"><text class="w" lang="ain" x="${L2 - 10}" y="${y + 4}" text-anchor="end">${esc(k.w)}</text></a>
       <line x1="${xr}" x2="${xk}" y1="${y}" y2="${y}" stroke="${REG_COLOR[keyReg]}" stroke-width="2" opacity=".45"/>
       <circle cx="${xr}" cy="${y}" r="4" fill="var(--muted)" stroke="var(--panel)" stroke-width="2"/>
       <circle cx="${xk}" cy="${y}" r="5.5" fill="${REG_COLOR[keyReg]}" stroke="var(--panel)" stroke-width="2"/>
@@ -915,7 +947,7 @@ function renderKeyness() {
     `<span class="k">log scale, per million tokens</span>`;
   $("#keytable").innerHTML = `<table><tr><th>Form</th><th class="num">In register</th>
     <th class="num">Per million</th><th class="num">Rest, per million</th><th class="num">G²</th></tr>` +
-    rows.map((k) => `<tr><td><a class="w" href="${searchHref(k.w)}">${esc(k.w)}</a>${k.f ? ' <span class="m">(function)</span>' : ""}</td>
+    rows.map((k) => `<tr><td><a class="w" lang="ain" href="${searchHref(k.w)}">${esc(k.w)}</a>${k.f ? ' <span class="m">(function)</span>' : ""}</td>
       <td class="num">${fmt(k.n)}</td><td class="num">${fmt(k.pm)}</td>
       <td class="num">${fmt(k.pmRest)}</td><td class="num">${fmt(Math.round(k.g2))}</td></tr>`).join("") + "</table>";
 }
@@ -952,20 +984,19 @@ function renderHeatmap() {
   const MIX = [10, 28, 48, 68, 86];
   const rows = [...REG_ORDER];
   if (hmSort) rows.sort((a, b) => share(b, hmSort) - share(a, hmSort));
-  $("#hm").innerHTML = `<table class="hm"><tr class="hd"><th>register</th>` +
-    cols.map((t) => `<th data-t="${t}" aria-sort="${hmSort === t ? "descending" : "none"}">${t}${hmSort === t ? " ↓" : ""}</th>`).join("") +
+  $("#hm").innerHTML = `<table class="hm"><tr class="hd"><th scope="col">register</th>` +
+    cols.map((t) => `<th scope="col" data-t="${t}" tabindex="0" aria-sort="${hmSort === t ? "descending" : "none"}">${t}${hmSort === t ? " ↓" : ""}</th>`).join("") +
     `</tr>` + rows.map((r) => `<tr data-reg="${r}"><td><span class="rl" data-r="${r}" tabindex="0" role="button">
       <span class="rdot" style="background:${REG_COLOR[r]}"></span>${esc(regLabel(r))}</span></td>` +
       cols.map((t) => {
         const v = share(r, t);
         const s = step(v);
-        return `<td class="s${s}"><span class="cell" tabindex="0" role="img"
-          aria-label="${esc(regLabel(r))}, ${t}: ${(100 * v).toFixed(1)} percent"
+        return `<td class="s${s}"><span class="cell"
           data-tip="<b>${t}</b> in ${esc(regLabel(r)).toLowerCase()}<br>${(100 * v).toFixed(1)}% of tagged tokens <span class=m>(corpus ${(100 * corpusShare(t)).toFixed(1)}%)</span>"
           style="background:color-mix(in oklab, var(--accent) ${MIX[s]}%, var(--panel))">${(100 * v).toFixed(1)}</span></td>`;
       }).join("") + "</tr>").join("") + "</table>";
   $("#hm").querySelectorAll("th[data-t]").forEach((th) =>
-    th.addEventListener("click", () => { hmSort = hmSort === th.dataset.t ? null : th.dataset.t; renderHeatmap(); }));
+    onActivate(th, () => { hmSort = hmSort === th.dataset.t ? null : th.dataset.t; renderHeatmap(); }));
   $("#hm").querySelectorAll(".rl").forEach((el) =>
     onActivate(el, () => togglePin(el.dataset.r)));
   if (pin) document.querySelectorAll("#hm tr[data-reg]").forEach((el) =>
@@ -975,8 +1006,8 @@ function renderHeatmap() {
     ` high (max ${(100 * smax).toFixed(0)}%)`;
   const t = D.totals;
   $("#poslede").textContent = `${pct(t.tagged / t.tokens)} of tokens carry a part-of-speech tag, ` +
-    `and the mix shifts by register: narrative runs on verbs and particles, news and scripture ` +
-    `lean on nouns.`;
+    `and the mix shifts by register: oral narrative carries far more particles, news and ` +
+    `scripture lean on nouns.`;
 }
 
 // ── 07 collections ─────────────────────────────────────────────────────────
@@ -991,25 +1022,25 @@ function renderCollections() {
     return (typeof av === "number" ? av - bv : String(av).localeCompare(String(bv), "ja")) * dir;
   });
   $("#colltable").innerHTML = `<thead><tr>` + cols.map(([k, l]) =>
-    `<th data-k="${k}" class="${typeof items[0][k] === "number" ? "num" : ""}"
+    `<th scope="col" data-k="${k}" tabindex="0" class="${typeof items[0][k] === "number" ? "num" : ""}"
       aria-sort="${collSort.k === k ? (collSort.dir < 0 ? "descending" : "ascending") : "none"}">${l}${collSort.k === k ? (collSort.dir < 0 ? " ↓" : " ↑") : ""}</th>`).join("") +
     `</tr></thead><tbody>` + items.map((c) => {
       const rom = c.dialect ? (ROMAJI[c.dialect] ?? "") : "";
       return `<tr data-reg="${esc(c.register)}" style="--pincolor:${REG_COLOR[c.register]}">
       <td lang="ja">${esc(c.name)}</td>
-      <td><span class="regcell" data-r="${esc(c.register)}"><span class="rdot" style="background:${REG_COLOR[c.register]}"></span>${esc(regLabel(c.register))}</span></td>
+      <td><span class="regcell" data-r="${esc(c.register)}" tabindex="0" role="button"><span class="rdot" style="background:${REG_COLOR[c.register]}"></span>${esc(regLabel(c.register))}</span></td>
       <td>${c.dialect ? `<span lang="ja">${esc(c.dialect)}</span> <span style="color:var(--muted)">${esc(rom)}</span>` : "—"}</td>
       <td class="num">${fmt(c.sentences)}</td><td class="num">${fmt(c.words)}</td>
       <td class="num">${fmt(c.types)}</td><td class="num">${c.meanLength.toFixed(1)}</td></tr>`;
     }).join("") + "</tbody>";
-  $("#colltable thead").addEventListener("click", (e) => {
-    const th = e.target.closest("th[data-k]"); if (!th) return;
-    const k = th.dataset.k;
-    collSort = collSort.k === k ? { k, dir: -collSort.dir } : { k, dir: k === "name" || k === "register" || k === "dialect" ? 1 : -1 };
-    renderCollections();
-  });
+  $("#colltable").querySelectorAll("th[data-k]").forEach((th) =>
+    onActivate(th, () => {
+      const k = th.dataset.k;
+      collSort = collSort.k === k ? { k, dir: -collSort.dir } : { k, dir: k === "name" || k === "register" || k === "dialect" ? 1 : -1 };
+      renderCollections();
+    }));
   $("#colltable").querySelectorAll(".regcell").forEach((el) =>
-    el.addEventListener("click", () => togglePin(el.dataset.r)));
+    onActivate(el, () => togglePin(el.dataset.r)));
   if (pin) document.querySelectorAll("#colltable tbody tr").forEach((el) =>
     el.classList.toggle("pinned", el.dataset.reg === pin));
 }
@@ -1028,12 +1059,17 @@ function revealObserver() {
 }
 function navObserver() {
   const links = [...document.querySelectorAll("#subnav a")];
+  const targets = new Set(links.map((a) => a.getAttribute("href").slice(1)));
   const io = new IntersectionObserver((es) => {
     for (const en of es) if (en.isIntersecting) {
-      links.forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#" + en.target.id));
+      links.forEach((a) => {
+        const on = a.getAttribute("href") === "#" + en.target.id;
+        a.classList.toggle("on", on);
+        if (on) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+      });
     }
   }, { rootMargin: "-25% 0px -65% 0px" });
-  document.querySelectorAll("main section[id]").forEach((s) => io.observe(s));
+  document.querySelectorAll("main section[id]").forEach((s) => { if (targets.has(s.id)) io.observe(s); });
 }
 
 boot();
