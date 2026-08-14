@@ -152,6 +152,27 @@ bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADV
 # migrations/0002..0006 are applied automatically by the loader.
 ```
 
+## Statistics page
+
+`public/stats.html` (served at `/stats`) is a register-separated statistics
+report over the token layer: corpus totals, a sample-sentence carousel,
+register composition, dialect distribution, a Zipf rank–frequency plot,
+per-register sentence-length fingerprints, top n-grams, G² keyness lists,
+a POS heatmap, and the full collections table. Charts are inline SVG/CSS with
+a shared tooltip; the register palette is CVD-checked in both color schemes.
+
+The page reads one precomputed asset, `public/stats.json`:
+
+```sh
+bun scripts/build_stats.mjs        # reads build/corpus.db → public/stats.json
+bun scripts/shoot_stats.mjs        # light/dark/mobile screenshots → build/stats-*.png
+```
+
+Every sentence inherits a register from its source collection via
+`data/collection_registers.json`; collections absent from that table fall back
+to `other`. Rerun `build_stats.mjs` after each corpus reload so the snapshot
+matches the live token layer.
+
 ## Unseeded corpus words
 
 An unseeded corpus word is a recurring Latin-script token that cannot reach an
