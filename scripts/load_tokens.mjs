@@ -13,7 +13,7 @@
  */
 import { readFileSync } from "node:fs";
 import { foldToken } from "../src/normalize.ts";
-import { TEXT_DOCUMENTS_REBUILD_SQL } from "../src/text.ts";
+import { TEXT_CONTIGUITY_SQL, textDocumentsRebuild } from "../src/text.ts";
 
 const TURSO = process.argv.includes("--turso");
 const tokArg = process.argv.find((a) => a.startsWith("--tokens="));
@@ -27,6 +27,7 @@ const MIG6 = new URL("../migrations/0006_text_layers.sql", import.meta.url);
 const MIG7 = new URL("../migrations/0007_text_documents.sql", import.meta.url);
 const SENT = new URL("../build/sentences.jsonl", import.meta.url);
 const SLUGS = new URL("../data/collection_slugs.json", import.meta.url);
+const TEXT_EXCLUSIONS = new URL("../data/text_exclusions.json", import.meta.url);
 const TOK = new URL(TOK_FILE, import.meta.url);
 const MORPH = new URL("../build/morph_forms.jsonl", import.meta.url);
 const GLOSS = new URL("../build/morph_gloss.jsonl", import.meta.url);
@@ -48,6 +49,9 @@ function readJsonlIfExists(url) {
   } catch {
     return null;
   }
+}
+function textExclusions() {
+  return Object.keys(JSON.parse(readFileSync(TEXT_EXCLUSIONS, "utf8")));
 }
 function chunk(arr, n) {
   const out = [];
@@ -208,7 +212,9 @@ async function loadTurso() {
   console.log("recreating indexes…");
   await createBulkIndexes(db);
   console.log("rebuilding text_documents…");
-  for (const s of TEXT_DOCUMENTS_REBUILD_SQL) await db.execute(s);
+  const violations = (await db.execute(TEXT_CONTIGUITY_SQL)).rows[0].violations;
+  if (Number(violations) > 0) throw new Error(`${violations} documents are not contiguous in row_order; text_documents left as it was`);
+  await db.batch(textDocumentsRebuild(textExclusions()).map((sql) => ({ sql, args: [] })), "write");
 
   const c1 = (await db.execute("SELECT count(*) c FROM sentences")).rows[0].c;
   const c2 = (await db.execute("SELECT count(*) c FROM corpus_tokens")).rows[0].c;
@@ -265,7 +271,9 @@ async function loadLocal() {
     console.log("(no build/morph_gloss.jsonl — run scripts/build_gloss.mjs first; skipping)");
   }
 
-  for (const s of TEXT_DOCUMENTS_REBUILD_SQL) db.run(s);
+  const violations = db.query(TEXT_CONTIGUITY_SQL).get().violations;
+  if (Number(violations) > 0) throw new Error(`${violations} documents are not contiguous in row_order; text_documents left as it was`);
+  db.transaction(() => { for (const s of textDocumentsRebuild(textExclusions())) db.run(s); })();
   const nD = db.query("SELECT count(*) c FROM text_documents").get().c;
   const nS = db.query("SELECT count(*) c FROM sentences").get().c;
   const nT = db.query("SELECT count(*) c FROM corpus_tokens").get().c;

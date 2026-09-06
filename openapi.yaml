@@ -282,7 +282,7 @@ paths:
       parameters:
         - { name: source, in: query, required: true, schema: { type: string }, description: "db.aynu.org source slug, e.g. asai-take-folktales" }
       responses:
-        "200": { description: "{ key, ord, title, sentences, translated, text_layer, text_layer_status, uri }[] in data — key is the sentence-id prefix before '#' (aa-asai/001); empty when the source has no text" }
+        "200": { description: "{ key, ord, title, sentences, translated, text_layer, text_layer_status, author, dialect, uri }[] in data — key is the sentence-id prefix before '#' (aa-asai/001); layer, author and dialect are set only when every sentence agrees; empty when the source has no text" }
         "400": { description: missing source }
   /v1/text/document:
     get:
@@ -293,7 +293,7 @@ paths:
         - { name: offset, in: query, schema: { type: integer, default: 0 }, description: "0-based sentence offset within the document" }
         - { name: limit, in: query, schema: { type: integer, default: 500, maximum: 1000 } }
       responses:
-        "200": { description: "{ document, prev, next, total, offset, limit, sentences[] } in data — each sentence { id, index, text, source_text, text_layer, text_layer_status, translation, dialect, author, uri }; text is the active (modern where layered) text, source_text the printed spelling when a layer is active" }
+        "200": { description: "{ document, prev, next, total, offset, limit, sentences[] } in data — each sentence { id, index, text, source_text, text_layer, text_layer_status, translation, dialect, author, uri }; text is the active (modern where layered) text, source_text the printed spelling when a layer is active; an offset past the end yields an empty sentences array" }
         "400": { description: missing source or key }
         "404": { description: no such document in that source }
   /v1/stats:

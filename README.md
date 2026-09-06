@@ -164,15 +164,22 @@ single indexed range scan. The catalogue's reader
 | Method · Route | Params | Returns |
 |---|---|---|
 | `GET /v1/text/sources` | — | `{ source_slug, documents, sentences, translated, text_layer, text_layer_status }[]` |
-| `GET /v1/text/documents` | `source` (db.aynu.org slug) | `{ key, ord, title, sentences, translated, text_layer, text_layer_status, uri }[]` in reading order |
+| `GET /v1/text/documents` | `source` (db.aynu.org slug) | `{ key, ord, title, sentences, translated, text_layer, text_layer_status, author, dialect, uri }[]` in reading order |
 | `GET /v1/text/document` | `source`, `key`, `offset` (0), `limit` (500, ≤1000) | `{ document, prev, next, total, offset, limit, sentences[] }`; each sentence `{ id, index, text, source_text, text_layer, text_layer_status, translation, dialect, author, uri }` |
 
 `text` is the corpus's active text — the modern-orthography sidecar where one
 is loaded, the source transcription elsewhere; `source_text` carries the
-printed spelling when a sidecar is active, `null` otherwise. `text_layer` on a
-document means every sentence of it carries that sidecar. The responses carry
-`Cache-Control: public, max-age=3600`, since the corpus changes only at load
-time.
+printed spelling when a sidecar is active, `null` otherwise. `text_layer`,
+`text_layer_status`, `author` and `dialect` on a document are set only when
+every sentence of it agrees. An `offset` past the end returns an empty page.
+Ready responses carry `Cache-Control: public, max-age=3600`, since the corpus
+changes only at load time; before the table exists they carry `no-store`.
+
+Collections that are not continuous text — dictionaries, phrasebooks, signage
+— are listed in `data/text_exclusions.json` (slug → reason) and left out of
+the index. A rebuild first counts documents whose `row_order` range holds
+more rows than the document has sentences and refuses to run while that
+count is not zero, since the reader's range scan depends on it.
 
 `text_documents` is rebuilt by `load_tokens.mjs` after every load. To add it
 to a store that is already loaded, without reloading tokens:
