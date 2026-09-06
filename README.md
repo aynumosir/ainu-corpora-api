@@ -152,6 +152,38 @@ bun scripts/build_gloss.mjs        # → build/morph_gloss.jsonl (PERS, NMLZ/ADV
 # migrations/0002..0006 are applied automatically by the loader.
 ```
 
+## Reading a source in order — `/v1/text` (Phase 9)
+
+A source registered on db.aynu.org can be read document by document. A
+document is the sentence-id prefix before `#` (`aa-asai/001`, `bible/1co/001`);
+its sentences occupy one contiguous `row_order` range, recorded in
+`text_documents` (migrations/0007_text_documents.sql) so a page of text is a
+single indexed range scan. The catalogue's reader
+(`https://db.aynu.org/sources/<slug>/read`) is built on these three routes.
+
+| Method · Route | Params | Returns |
+|---|---|---|
+| `GET /v1/text/sources` | — | `{ source_slug, documents, sentences, translated, text_layer, text_layer_status }[]` |
+| `GET /v1/text/documents` | `source` (db.aynu.org slug) | `{ key, ord, title, sentences, translated, text_layer, text_layer_status, uri }[]` in reading order |
+| `GET /v1/text/document` | `source`, `key`, `offset` (0), `limit` (500, ≤1000) | `{ document, prev, next, total, offset, limit, sentences[] }`; each sentence `{ id, index, text, source_text, text_layer, text_layer_status, translation, dialect, author, uri }` |
+
+`text` is the corpus's active text — the modern-orthography sidecar where one
+is loaded, the source transcription elsewhere; `source_text` carries the
+printed spelling when a sidecar is active, `null` otherwise. `text_layer` on a
+document means every sentence of it carries that sidecar. The responses carry
+`Cache-Control: public, max-age=3600`, since the corpus changes only at load
+time.
+
+`text_documents` is rebuilt by `load_tokens.mjs` after every load. To add it
+to a store that is already loaded, without reloading tokens:
+
+```sh
+bun scripts/build_text_documents.mjs            # local build/corpus.db
+TURSO_DATABASE_URL=… TURSO_AUTH_TOKEN=… bun scripts/build_text_documents.mjs --turso
+```
+
+Until it exists the three routes answer with empty lists and 404s.
+
 ## Statistics page
 
 `public/stats.html` (served at `/stats`) is a register-separated statistics

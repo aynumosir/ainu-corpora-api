@@ -86,3 +86,15 @@ get the same capability without touching HTTP.
 - Token layer = `sentences` + `corpus_tokens` in the shared Turso DB (will split
   to a dedicated corpus DB later; the `/v1` contract won't change when it does).
 - Rebuild steps: see [`../README.md`](../README.md).
+
+## Reading a source in order — `/v1/text/*`
+```
+GET /v1/text/documents?source=asai-take-folktales
+→ data: [{ key, ord, title, sentences, translated, text_layer, text_layer_status, uri }]
+GET /v1/text/document?source=asai-take-folktales&key=aa-asai/001&offset=0&limit=500
+→ data: { document, prev, next, total, offset, limit, sentences: [{ id, index, text, source_text, translation, … }] }
+```
+- `source` is the db.aynu.org slug; `/v1/text/sources` lists every slug that has text.
+- Render `text` as the main line, `source_text` (when non-null) as the spelling the source printed, `translation` beneath.
+- Page with `offset`/`limit`; `prev`/`next` are the neighbouring documents for navigation.
+

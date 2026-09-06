@@ -39,6 +39,7 @@ import { collocations, structural, wordAnalytics } from "./analysis.js";
 import { dialectTree } from "./dialect.js";
 import { examplesFor } from "./examples.js";
 import { glossForSentence, glossCoverage } from "./gloss.js";
+import { textSources, textDocuments, textDocument } from "./text.js";
 import { BadRegexError } from "./regex.js";
 import { selectUnseededWords } from "./unseeded.js";
 import { unseededSnapshot } from "./unseeded-data.js";
@@ -394,6 +395,38 @@ app.get("/v1/gloss", async (c) => {
   const id = c.req.query("id") ?? "";
   if (!id.trim()) return fail(c, 400, "missing_id", "id is required (sentence id, e.g. hokudai-respect/full#7)");
   return ok(c, await glossForSentence(c.get("db"), id));
+});
+
+// ───────────────────────────── /v1/text ────────────────────────────── //
+// Continuous reading of a registered source (one with a db.aynu.org slug):
+// its documents in order, then one document's sentences page by page. The
+// corpus changes only at load time, so these answers are safe to cache for
+// an hour at the edge and in browsers. Empty until text_documents is built
+// (see migrations/0007_text_documents.sql).
+const TEXT_CACHE = "public, max-age=3600, stale-while-revalidate=86400";
+app.get("/v1/text/sources", async (c) => {
+  c.header("Cache-Control", TEXT_CACHE);
+  return ok(c, await textSources(c.get("db")));
+});
+app.get("/v1/text/documents", async (c) => {
+  const source = (c.req.query("source") ?? "").trim();
+  if (!source) return fail(c, 400, "missing_source", "source is required (db.aynu.org source slug)");
+  c.header("Cache-Control", TEXT_CACHE);
+  return ok(c, await textDocuments(c.get("db"), source));
+});
+app.get("/v1/text/document", async (c) => {
+  const source = (c.req.query("source") ?? "").trim();
+  const key = (c.req.query("key") ?? "").trim();
+  if (!source) return fail(c, 400, "missing_source", "source is required (db.aynu.org source slug)");
+  if (!key) return fail(c, 400, "missing_key", "key is required (document key, e.g. aa-asai/001)");
+  const page = await textDocument(c.get("db"), source, key, {
+    offset: intParam(c.req.query("offset"), 0),
+    limit: intParam(c.req.query("limit"), 0),
+  });
+  if (!page) return fail(c, 404, "not_found", `no document ${key} in source ${source}`);
+  c.header("Cache-Control", TEXT_CACHE);
+  const { sentences, ...meta } = page;
+  return ok(c, { ...meta, sentences });
 });
 
 app.notFound((c) => fail(c, 404, "not_found", `no route for ${c.req.path}`));

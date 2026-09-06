@@ -13,6 +13,7 @@
  */
 import { readFileSync } from "node:fs";
 import { foldToken } from "../src/normalize.ts";
+import { TEXT_DOCUMENTS_REBUILD_SQL } from "../src/text.ts";
 
 const TURSO = process.argv.includes("--turso");
 const tokArg = process.argv.find((a) => a.startsWith("--tokens="));
@@ -23,6 +24,7 @@ const MIG3 = new URL("../migrations/0003_dialect_levels.sql", import.meta.url);
 const MIG4 = new URL("../migrations/0004_morph_gloss.sql", import.meta.url);
 const MIG5 = new URL("../migrations/0005_source_slug.sql", import.meta.url);
 const MIG6 = new URL("../migrations/0006_text_layers.sql", import.meta.url);
+const MIG7 = new URL("../migrations/0007_text_documents.sql", import.meta.url);
 const SENT = new URL("../build/sentences.jsonl", import.meta.url);
 const SLUGS = new URL("../data/collection_slugs.json", import.meta.url);
 const TOK = new URL(TOK_FILE, import.meta.url);
@@ -159,6 +161,9 @@ async function loadTurso() {
   for (const s of ddlStatements(readFileSync(MIG6, "utf8"))) {
     try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
+  for (const s of ddlStatements(readFileSync(MIG7, "utf8"))) {
+    try { await db.execute(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
+  }
 
   console.log("dropping bulk-load indexes…");
   await dropBulkIndexes(db);
@@ -202,6 +207,8 @@ async function loadTurso() {
 
   console.log("recreating indexes…");
   await createBulkIndexes(db);
+  console.log("rebuilding text_documents…");
+  for (const s of TEXT_DOCUMENTS_REBUILD_SQL) await db.execute(s);
 
   const c1 = (await db.execute("SELECT count(*) c FROM sentences")).rows[0].c;
   const c2 = (await db.execute("SELECT count(*) c FROM corpus_tokens")).rows[0].c;
@@ -226,6 +233,9 @@ async function loadLocal() {
     try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
   for (const s of ddlStatements(readFileSync(MIG6, "utf8"))) {
+    try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
+  }
+  for (const s of ddlStatements(readFileSync(MIG7, "utf8"))) {
     try { db.run(s); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; }
   }
   db.run("DELETE FROM corpus_tokens"); db.run("DELETE FROM sentences");
@@ -255,9 +265,11 @@ async function loadLocal() {
     console.log("(no build/morph_gloss.jsonl — run scripts/build_gloss.mjs first; skipping)");
   }
 
+  for (const s of TEXT_DOCUMENTS_REBUILD_SQL) db.run(s);
+  const nD = db.query("SELECT count(*) c FROM text_documents").get().c;
   const nS = db.query("SELECT count(*) c FROM sentences").get().c;
   const nT = db.query("SELECT count(*) c FROM corpus_tokens").get().c;
-  console.log(`\nlocal build/corpus.db: sentences=${nS} corpus_tokens=${nT}`);
+  console.log(`\nlocal build/corpus.db: sentences=${nS} corpus_tokens=${nT} text_documents=${nD}`);
 
   console.log("\n— sample KWIC for node 'rayke' (left | NODE | right) —");
   const kwic = db.query(
