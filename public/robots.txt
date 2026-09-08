@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://corpus.aynu.org/sitemap.xml
