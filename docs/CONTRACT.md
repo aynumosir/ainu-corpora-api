@@ -66,6 +66,8 @@ GET /v1/pos?upos=VERB&next_surface==an&limit=20
 - **Accent folding:** `/v1/kwic` and `/v1/analytics` default to `match=fold`,
   which is pitch/length-insensitive (`nea`≡`néa`, `ramat`≡`rámat`). Use
   `match=exact` to keep diacritics, `match=prefix` for stems.
+- **`/v1/kwic` lines** carry the sentence's `collection` and `document` titles
+  beside `dialect`/`author`, the same provenance columns `/v1/search` rows have.
 - **`/v1/kwic` tokens** carry `{i,s,n,p,u,l,x,f,g,mc,cl,node?,alt?}` so a UI can
   show a display POS line (`p`, e.g. morpheme-DB `PERS` for `a=`/`ku=`/`=an`) plus
   a short English gloss line (`g`, e.g. `4.A=`, `NMLZ`, `have`). `u` preserves
