@@ -47,6 +47,8 @@ components:
         translation: { type: string, nullable: true }
         dialect: { type: string, nullable: true }
         author: { type: string, nullable: true }
+        collection: { type: string, nullable: true, description: "collection title, as on /v1/search rows" }
+        document: { type: string, nullable: true, description: "document title within the collection" }
         uri: { type: string, nullable: true }
         source_slug: { type: string, nullable: true, description: "db.aynu.org source-record slug; null when unregistered" }
         text: { type: string, description: "full sentence in the active (canonical) text" }

@@ -63,6 +63,8 @@ export interface KwicLine {
   translation: string | null;
   dialect: string | null;
   author: string | null;
+  collection: string | null;  // collection title, as on /v1/search rows
+  document: string | null;    // document title within the collection
   uri: string | null;
   source_slug: string | null; // db.aynu.org source-record slug (see migrations/0005)
   text: string;               // full sentence in the active (canonical) text
@@ -247,7 +249,7 @@ async function kwicImpl(
   const lim = clampLimit(opts.limit);
   const offset = Math.max(0, Math.floor(opts.offset ?? 0));
   const sql = `SELECT t.sentence_id, t.idx, t.char_start, t.char_end,
-                      s.text, s.translation, s.dialect, s.author, s.uri
+                      s.text, s.translation, s.dialect, s.author, s.collection, s.document, s.uri
                FROM corpus_tokens t JOIN sentences s ON s.id = t.sentence_id
                WHERE ${nodeWhere}
                ORDER BY t.sentence_id, t.idx
@@ -256,7 +258,7 @@ async function kwicImpl(
   const { results: nodes } = await db.prepare(sql).bind(...params).all<{
     sentence_id: string; idx: number; char_start: number; char_end: number;
     text: string; translation: string | null; dialect: string | null;
-    author: string | null; uri: string | null;
+    author: string | null; collection: string | null; document: string | null; uri: string | null;
   }>();
   if (!nodes?.length) return [];
 
@@ -343,7 +345,8 @@ async function kwicImpl(
       node_text: text.slice(n.char_start, n.char_end),
       right_text: text.slice(n.char_end, n.char_end + 48),
       text,
-      translation: n.translation, dialect: n.dialect, author: n.author, uri: n.uri,
+      translation: n.translation, dialect: n.dialect, author: n.author,
+      collection: n.collection ?? null, document: n.document ?? null, uri: n.uri,
       source_slug: slugs.get(n.sentence_id) ?? null,
       legacy_text: layer?.legacy_text ?? null,
       text_layer: layer?.text_layer ?? null,

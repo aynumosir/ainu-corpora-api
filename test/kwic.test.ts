@@ -101,7 +101,8 @@ test("node upos + clitic + dialect constraints are appended", async () => {
 test("builds per-token left/node/right windows from sentence tokens", async () => {
   // node 'arpa' at idx 2 of "ku = arpa wa an"
   const node = { sentence_id: "s1", idx: 2, char_start: 3, char_end: 7,
-    text: "ku=arpa wa an", translation: "I go and...", dialect: null, author: null, uri: null };
+    text: "ku=arpa wa an", translation: "I go and...", dialect: "沙流", author: null,
+    collection: "AA研アイヌ語資料", document: "民話 8", uri: null };
   const sentToks = [tok(0, "ku", { cl: 1 }), tok(1, "=", {}), tok(2, "arpa", { upos: "VERB" }), tok(3, "wa"), tok(4, "an")];
   const { db } = fakeDb([[node], sentToks]);
   const out = await kwic(db, { q: "arpa", ctx: 2, limit: 5, sort: "none", match: "exact", expand: "none" });
@@ -112,6 +113,9 @@ test("builds per-token left/node/right windows from sentence tokens", async () =
   expect(out[0].left.map((t) => t.s)).toEqual(["ku", "="]);
   expect(out[0].right.map((t) => t.s)).toEqual(["wa", "an"]);
   expect(out[0].node_text).toBe("arpa");
+  // Provenance travels with the line, as it does on /v1/search rows.
+  expect(out[0].collection).toBe("AA研アイヌ語資料");
+  expect(out[0].document).toBe("民話 8");
 });
 
 test("morpheme DB gloss row overrides display POS and adds gloss", async () => {
